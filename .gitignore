@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+.venv/
+
+# Local personal data
+/data/profiles.local.jsonl
+/data/history.local.jsonl
+/data/defaults.local.json
+
+# Generated invoices
+/invoices/
