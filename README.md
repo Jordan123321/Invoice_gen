@@ -4,6 +4,16 @@ A desktop invoice generator focused on speed, repeatability, and clean PDF outpu
 
 > ✅ **Status:** v1.0 is now generated successfully.
 
+## Download
+
+- **Latest release (recommended):**
+  - Windows `.exe`, macOS package, Linux build artifacts:  
+    `https://github.com/jordan123321/Invoice_gen/releases/latest`
+- **Build pipeline page (if you want CI artifacts from a run):**  
+  `https://github.com/jordan123321/Invoice_gen/actions`
+
+> Tip: Use **Releases** for stable downloads. Use **Actions artifacts** for testing/preview builds.
+
 ---
 
 ## Why this app exists
@@ -147,3 +157,43 @@ pyinstaller --name InvoiceApp --windowed \
 > Note: PyInstaller splash support is primarily used for onefile startup UX on Windows.
 
 Outputs appear under `dist/`. For reproducible builds, use `InvoiceApp.spec`.
+
+---
+
+## How to use (quick wiki)
+
+### 1) First launch setup
+1. Open the app.
+2. Add at least one **Provider** profile.
+3. Add at least one **Recipient** profile.
+4. Add at least one **Payment profile** (Domestic/International/PayPal).
+
+### 2) Generate your first invoice
+1. Select Provider, Recipient, and Payment profile.
+2. Fill service details (category/title/hours/rate).
+3. Choose session date/time.
+4. Choose invoice date mode:
+   - **Relative** (today ± offset), or
+   - **Absolute** (fixed date).
+5. Click **Generate Invoice PDF**.
+
+### 3) Find output files
+- PDFs are saved under:  
+  `~/Documents/Invoice_gen/invoices/<recipient>/<year>/...`
+
+### 4) Use history panel
+- Use **Open** to view PDF.
+- Use **Delete file** to delete disk file + remove from list.
+- Use **Remove from list** to keep disk file but remove history entry.
+- Use **Refresh** to resync with filesystem.
+
+### 5) Defaults and persistence
+- “Set default” buttons save your preferred values.
+- Profiles/history/defaults persist in platform app-data (not temp extraction folders).
+
+### 6) Donation QR behavior
+`QR.png` is resolved in this order:
+1. user app-data folder
+2. next to executable
+3. bundled asset
+4. project root (source mode)
