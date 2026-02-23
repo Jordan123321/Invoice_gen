@@ -586,8 +586,9 @@ class InvoiceApp(ctk.CTk):
         except Exception:
             cur_dt = dt.datetime.now()
 
+        cal_columns = 5 if mode == "invoice_date" else 4
         cal = Calendar(dialog, selectmode="day", year=cur_dt.year, month=cur_dt.month, day=cur_dt.day, date_pattern="yyyy-mm-dd")
-        cal.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
+        cal.grid(row=0, column=0, columnspan=cal_columns, padx=10, pady=10)
 
         hour_var = tk.StringVar(value=f"{cur_dt.hour:02d}")
         min_var = tk.StringVar(value=f"{cur_dt.minute:02d}")
@@ -627,27 +628,44 @@ class InvoiceApp(ctk.CTk):
         today = dt.date.today()
         action_row = 2 if mode == "session_start" else 1
         if mode == "invoice_date":
-            offsets = list(range(-7, 8))
-            for idx, offset in enumerate(offsets):
-                r = action_row + (idx // 5)
-                c = idx % 5
-                label = f"{offset:+d}" if offset != 0 else "Today"
-                kind = "primary" if offset == 0 else "muted"
-                self._style_button(
-                    dialog,
-                    label,
-                    kind=kind,
-                    width=76,
-                    command=lambda off=offset: apply_date(today + timedelta(days=off), relative_offset=off),
-                ).grid(row=r, column=c, padx=4, pady=(0, 6))
+            logical_offsets = [
+                [-7, -6, -5, -4, -3],
+                [-2, -1, 0, 1, 2],
+                [3, 4, 5, 6, 7],
+            ]
+            for row_idx, row_offsets in enumerate(logical_offsets):
+                for col_idx, offset in enumerate(row_offsets):
+                    if offset == -1:
+                        label = "Yesterday"
+                    elif offset == 1:
+                        label = "Tomorrow"
+                    elif offset == 0:
+                        label = "Today"
+                    else:
+                        label = f"{offset:+d}"
+
+                    if offset < 0:
+                        kind = "danger"
+                    elif offset > 0:
+                        kind = "add"
+                    else:
+                        kind = "primary"
+
+                    self._style_button(
+                        dialog,
+                        label,
+                        kind=kind,
+                        width=82,
+                        command=lambda off=offset: apply_date(today + timedelta(days=off), relative_offset=off),
+                    ).grid(row=action_row + row_idx, column=col_idx, padx=4, pady=(0, 6))
+
             self._style_button(dialog, "Use selected date", kind="primary", width=140, command=apply_selected).grid(
                 row=action_row + 3, column=0, columnspan=5, padx=6, pady=(4, 8)
             )
         else:
-            self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=action_row, column=0, padx=6, pady=(0, 8))
-            self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=action_row, column=1, padx=6, pady=(0, 8))
-            self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=action_row, column=2, padx=6, pady=(0, 8))
-            self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=action_row, column=3, padx=6, pady=(0, 8))
+            self._style_button(dialog, "Use selected", kind="primary", width=160, command=apply_selected).grid(
+                row=action_row, column=0, columnspan=4, padx=6, pady=(0, 8)
+            )
 
     def _set_invoice_date_defaults(self) -> None:
         defaults = self.settings.setdefault("field_defaults", {})
