@@ -19,7 +19,9 @@ from storage import (
     load_history,
     load_profiles,
     load_settings,
+    prune_missing_history_files,
     record_invoice_history,
+    remove_history_entry,
     save_profile,
     save_settings,
     upsert_profile,
@@ -187,6 +189,7 @@ class InvoiceApp(ctk.CTk):
 
         self._build_ui()
         self._load_defaults()
+        prune_missing_history_files()
         self._refresh_history()
         self.after(120, self._maximize_window)
 
@@ -218,7 +221,15 @@ class InvoiceApp(ctk.CTk):
             arrowcolor="#f0f2f4",
             insertcolor="#f0f2f4",
             padding=4,
+            arrowsize=28,
             font=("Verdana", 11),
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", "#000000"), ("!disabled", "#000000")],
+            foreground=[("readonly", "#f0f2f4"), ("!disabled", "#f0f2f4")],
+            selectbackground=[("readonly", "#000000"), ("!disabled", "#000000")],
+            selectforeground=[("readonly", "#f0f2f4"), ("!disabled", "#f0f2f4")],
         )
 
     def _style_button(self, parent, text: str, *, kind: str = "primary", width: int = 90, command=None):
@@ -243,8 +254,8 @@ class InvoiceApp(ctk.CTk):
             pass
 
     def _build_ui(self) -> None:
-        self.grid_columnconfigure(0, weight=4, minsize=640)
-        self.grid_columnconfigure(1, weight=1, minsize=320)
+        self.grid_columnconfigure(0, weight=4, minsize=600)
+        self.grid_columnconfigure(1, weight=1, minsize=280)
         self.grid_rowconfigure(0, weight=1)
 
         left = ctk.CTkScrollableFrame(self, corner_radius=12)
@@ -252,7 +263,7 @@ class InvoiceApp(ctk.CTk):
         left.grid(row=0, column=0, sticky="nsew", padx=(14, 7), pady=14)
         right.grid(row=0, column=1, sticky="nsew", padx=(7, 14), pady=14)
         left.grid_columnconfigure(1, weight=1, minsize=300)
-        left.grid_columnconfigure(2, minsize=196)
+        left.grid_columnconfigure(2, minsize=220)
         right.grid_rowconfigure(1, weight=1)
         right.grid_columnconfigure(0, weight=1)
 
@@ -323,7 +334,7 @@ class InvoiceApp(ctk.CTk):
         ctk.CTkLabel(donate_frame, text="Scan the QR code to support development.", text_color=("gray35", "gray70")).grid(row=1, column=1, sticky="w", padx=10, pady=(0, 8))
 
         if DONATION_QR_PATH.exists():
-            self.donation_qr_image = ctk.CTkImage(light_image=Image.open(DONATION_QR_PATH), dark_image=Image.open(DONATION_QR_PATH), size=(96, 96))
+            self.donation_qr_image = ctk.CTkImage(light_image=Image.open(DONATION_QR_PATH), dark_image=Image.open(DONATION_QR_PATH), size=(192, 192))
             label = ctk.CTkLabel(donate_frame, text="", image=self.donation_qr_image)
             label.grid(row=0, column=0, rowspan=3, padx=10, pady=10)
             label.bind("<Button-1>", lambda _e: open_file(DONATION_QR_PATH))
@@ -359,10 +370,10 @@ class InvoiceApp(ctk.CTk):
         action.grid(row=row, column=2, padx=8, pady=6, sticky="e")
         action.grid_columnconfigure((0, 1), weight=1)
 
-        add_btn = self._style_button(action, "Add", kind="add", width=88, command=lambda t=profile_type: self._add_profile_dialog(t))
-        edit_btn = self._style_button(action, "Edit", kind="primary", width=88, command=lambda t=profile_type: self._edit_profile_dialog(t))
-        del_btn = self._style_button(action, "Delete", kind="danger", width=88, command=lambda t=profile_type: self._delete_profile(t))
-        def_btn = self._style_button(action, "Set default", kind="muted", width=88, command=lambda t=profile_type: self._set_default_profile(t))
+        add_btn = self._style_button(action, "Add", kind="add", width=100, command=lambda t=profile_type: self._add_profile_dialog(t))
+        edit_btn = self._style_button(action, "Edit", kind="primary", width=100, command=lambda t=profile_type: self._edit_profile_dialog(t))
+        del_btn = self._style_button(action, "Delete", kind="danger", width=100, command=lambda t=profile_type: self._delete_profile(t))
+        def_btn = self._style_button(action, "Set default", kind="muted", width=100, command=lambda t=profile_type: self._set_default_profile(t))
 
         add_btn.grid(row=0, column=0, padx=2, pady=2, sticky="ew")
         edit_btn.grid(row=0, column=1, padx=2, pady=2, sticky="ew")
@@ -450,6 +461,24 @@ class InvoiceApp(ctk.CTk):
         except Exception as exc:
             messagebox.showerror("Error", str(exc))
 
+    def _sanitize_invoice_texts(self) -> None:
+        limits = {
+            self.service_category_var: 48,
+            self.service_title_var: 120,
+            self.student_name_var: 48,
+            self.terms_var: 20,
+            self.currency_var: 8,
+        }
+        for var, limit in limits.items():
+            value = var.get().strip()
+            if len(value) > limit:
+                var.set(value[:limit])
+
+        prep = self.prep_text.get("1.0", "end").strip()
+        if len(prep) > 400:
+            self.prep_text.delete("1.0", "end")
+            self.prep_text.insert("1.0", prep[:400])
+
     def _set_default(self, field_key: str, value: object) -> None:
         model_key = FIELD_DEFAULT_KEYS[field_key]
         self.settings.setdefault("field_defaults", {})[model_key] = value
@@ -458,6 +487,7 @@ class InvoiceApp(ctk.CTk):
 
     def _generate_invoice(self) -> None:
         try:
+            self._sanitize_invoice_texts()
             provider = self._find_profile("provider", self.provider_var.get())
             recipient = self._find_profile("recipient", self.recipient_var.get())
             payment = self._find_profile("payment_method", self.payment_var.get())
@@ -515,7 +545,9 @@ class InvoiceApp(ctk.CTk):
             card.destroy()
         self.history_cards.clear()
 
-        entries = load_history(limit=25)
+        prune_missing_history_files()
+        entries = [e for e in load_history(limit=50) if e.get("output_path") and Path(e.get("output_path", "")).exists()]
+
         for idx, entry in enumerate(entries, start=1):
             bubble = ctk.CTkFrame(self.history_frame, corner_radius=14)
             bubble.pack(fill="x", padx=8, pady=6)
@@ -526,7 +558,13 @@ class InvoiceApp(ctk.CTk):
 
             ctk.CTkLabel(bubble, text=top, font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(8, 0))
             ctk.CTkLabel(bubble, text=subtitle).pack(anchor="w", padx=10)
-            ctk.CTkLabel(bubble, text=path, text_color=("gray35", "gray70"), wraplength=420, justify="left").pack(anchor="w", padx=10, pady=(0, 8))
+            ctk.CTkLabel(bubble, text=path, text_color=("gray35", "gray70"), wraplength=420, justify="left").pack(anchor="w", padx=10, pady=(0, 6))
+
+            action_row = ctk.CTkFrame(bubble, fg_color="transparent")
+            action_row.pack(anchor="w", padx=10, pady=(0, 8))
+            self._style_button(action_row, "Open", kind="primary", width=72, command=lambda p=path: self._open_invoice_from_history(p)).pack(side=tk.LEFT, padx=(0, 6))
+            self._style_button(action_row, "Delete file", kind="danger", width=96, command=lambda p=path: self._delete_invoice_file(p)).pack(side=tk.LEFT, padx=(0, 6))
+            self._style_button(action_row, "Remove from list", kind="muted", width=122, command=lambda p=path: self._remove_invoice_from_list(p)).pack(side=tk.LEFT)
 
             for widget in bubble.winfo_children():
                 widget.bind("<Double-Button-1>", lambda _e, p=path: self._open_invoice_from_history(p))
@@ -539,6 +577,25 @@ class InvoiceApp(ctk.CTk):
             messagebox.showwarning("Missing file", f"File not found:\n{p}")
             return
         open_file(p)
+
+    def _delete_invoice_file(self, raw_path: str) -> None:
+        p = Path(raw_path)
+        if not p.exists():
+            remove_history_entry(raw_path)
+            self._refresh_history()
+            return
+        if not messagebox.askyesno("Delete file", f"Delete this invoice file?\n{p}"):
+            return
+        try:
+            p.unlink()
+            remove_history_entry(raw_path)
+            self._refresh_history()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc))
+
+    def _remove_invoice_from_list(self, raw_path: str) -> None:
+        remove_history_entry(raw_path)
+        self._refresh_history()
 
     def _simple_record_dialog(self, title: str, fields: list[tuple[str, str]], initial: dict | None = None) -> dict | None:
         dialog = ctk.CTkToplevel(self)

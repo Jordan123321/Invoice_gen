@@ -78,6 +78,35 @@ def load_history(limit: int = 30) -> List[dict]:
     return list(reversed(items[-limit:]))
 
 
+def load_history_all() -> List[dict]:
+    return _read_jsonl(HISTORY_FILE)
+
+
+def save_history(items: List[dict]) -> None:
+    _write_jsonl(HISTORY_FILE, items)
+
+
+def prune_missing_history_files() -> int:
+    items = _read_jsonl(HISTORY_FILE)
+    kept: List[dict] = []
+    removed = 0
+    for item in items:
+        path = item.get("output_path")
+        if not path or Path(path).exists():
+            kept.append(item)
+        else:
+            removed += 1
+    if removed:
+        _write_jsonl(HISTORY_FILE, kept)
+    return removed
+
+
+def remove_history_entry(output_path: str) -> None:
+    items = _read_jsonl(HISTORY_FILE)
+    kept = [i for i in items if i.get("output_path") != output_path]
+    _write_jsonl(HISTORY_FILE, kept)
+
+
 def load_settings() -> dict:
     if not SETTINGS_FILE.exists():
         return {"selected_profiles": {}, "field_defaults": {}}

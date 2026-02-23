@@ -16,6 +16,7 @@ Simple modern desktop invoice generator for non-technical users.
 - "Set default" buttons for invoice form fields (for example rate per hour).
 - Tickbox to optionally open the generated PDF immediately (default off).
 - Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
+- Recent invoices include in-app actions: Open, Delete file, and Remove from list.
 - Rate/hour fields support both: typing custom values and choosing useful dropdown values.
   - Rate per hour suggestions: every £5 from 20 to 150.
   - Hours suggestions: every 0.25 increment.
@@ -64,3 +65,14 @@ pyinstaller --name InvoiceApp --onefile --windowed app.py
 ```
 
 The executable will be available in `dist/InvoiceApp.exe`.
+
+## Packaging a macOS app
+
+Run this on macOS:
+
+```bash
+pip install pyinstaller
+pyinstaller --name InvoiceApp --windowed app.py
+```
+
+The app bundle will be available at `dist/InvoiceApp.app`.

@@ -147,7 +147,12 @@ def build_invoice_pdf(invoice: dict, output_path: Path) -> Path:
 
     session_label = f"{fmt_date(session_start.date())}  {fmt_time(session_start)}–{fmt_time(session_end)}"
     meta = Table(
-        [["Invoice #", invoice_number, "Invoice date", fmt_date(invoice_date)], ["Terms", invoice.get("terms_label", "Net 7"), "Due date", fmt_date(due_date)], ["Service type", service_category, "Session", session_label], ["Client reference", student_name or "-", "", ""]],
+        [
+            [safe_para("Invoice #", small), safe_para(invoice_number, wrap_small), safe_para("Invoice date", small), safe_para(fmt_date(invoice_date), wrap_small)],
+            [safe_para("Terms", small), safe_para(invoice.get("terms_label", "Net 7"), wrap_small), safe_para("Due date", small), safe_para(fmt_date(due_date), wrap_small)],
+            [safe_para("Service type", small), safe_para(service_category, wrap_small), safe_para("Session", small), safe_para(session_label, wrap_small)],
+            [safe_para("Client ref", small), safe_para((student_name or "-")[:48], wrap_small), safe_para("", small), safe_para("", wrap_small)],
+        ],
         colWidths=[24 * mm, 62 * mm, 24 * mm, 60 * mm],
     )
     meta.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke), ("BOX", (0, 0), (-1, -1), 0.5, colors.grey), ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey), ("FONTSIZE", (0, 0), (-1, -1), 10)]))
