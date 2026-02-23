@@ -50,7 +50,7 @@ FIELD_DEFAULT_KEYS = {
     "session_start": "session_start",
     "invoice_date": "invoice_date",
     "invoice_date_mode": "invoice_date_mode",
-    "invoice_date_relative": "invoice_date_relative",
+    "invoice_date_relative_offset": "invoice_date_relative_offset",
     "terms": "terms_label",
     "due_days": "due_days",
     "currency": "currency",
@@ -70,8 +70,7 @@ TOOLTIPS = {
     "Session/work hours": "Total billable hours to charge.",
     "Extra hours (not billed)": "Optional non-billed hours shown for context.",
     "Session start (YYYY-MM-DD HH:MM)": "Date and time of the service/session start.",
-    "Invoice date (YYYY-MM-DD)": "Date shown as invoice issue date.",
-    "Invoice date mode": "Choose relative date (today/yesterday/tomorrow) or absolute calendar date.",
+    "Invoice date": "Pick a relative date (-7..+7 days from today) or an absolute calendar date.",
     "Terms label": "Payment terms label shown on invoice (e.g. Net 14).",
     "Due days": "Number of days after invoice date until payment is due.",
     "Currency": "Currency code used in amounts and payment section.",
@@ -185,8 +184,9 @@ class InvoiceApp(ctk.CTk):
         self.prep_description_var = tk.StringVar(value=defaults.get("prep_description", "Preparation and admin (not billed)."))
         self.session_start_var = tk.StringVar(value=defaults.get("session_start", dt.datetime.now().strftime("%Y-%m-%d %H:%M")))
         self.invoice_date_mode_var = tk.StringVar(value=defaults.get("invoice_date_mode", "relative"))
-        self.invoice_date_relative_var = tk.StringVar(value=defaults.get("invoice_date_relative", "today"))
-        self.invoice_date_var = tk.StringVar(value=defaults.get("invoice_date", dt.date.today().strftime("%Y-%m-%d")))
+        self.invoice_date_relative_offset_var = tk.IntVar(value=self._coerce_invoice_offset(defaults))
+        self.invoice_date_absolute_var = tk.StringVar(value=defaults.get("invoice_date", dt.date.today().strftime("%Y-%m-%d")))
+        self.invoice_date_var = tk.StringVar(value="")
         self.terms_var = tk.StringVar(value=defaults.get("terms_label", "Net 7"))
         self.due_days_var = tk.StringVar(value=str(defaults.get("due_days", "7")))
         self.currency_var = tk.StringVar(value=defaults.get("currency", "GBP"))
@@ -312,23 +312,19 @@ class InvoiceApp(ctk.CTk):
         row = self._field_row(left, row, "Session/work hours", self.duration_var, "session_hours", values=float_steps(0.25, 12.0, 0.25))
         row = self._field_row(left, row, "Extra hours (not billed)", self.prep_hours_var, "extra_hours", values=float_steps(0.0, 8.0, 0.25))
         row = self._field_row(left, row, "Session start (YYYY-MM-DD HH:MM)", self.session_start_var, "session_start", date_mode="session_start")
-        row = self._field_row(left, row, "Invoice date (YYYY-MM-DD)", self.invoice_date_var, "invoice_date", date_mode="invoice_date")
+        row = self._field_row(left, row, "Invoice date", self.invoice_date_var, "invoice_date", date_mode="invoice_date", readonly=True)
 
         lbl_mode = ctk.CTkLabel(left, text="Invoice date mode")
         lbl_mode.grid(row=row, column=0, sticky="w", padx=10, pady=8)
-        self._attach_tooltip(lbl_mode, TOOLTIPS["Invoice date mode"])
+        self._attach_tooltip(lbl_mode, "Relative tracks today with an offset, absolute keeps a fixed date.")
         mode_frame = ctk.CTkFrame(left, fg_color="transparent")
         mode_frame.grid(row=row, column=1, sticky="w", padx=10, pady=6)
         rb_rel = ctk.CTkRadioButton(mode_frame, text="Relative", variable=self.invoice_date_mode_var, value="relative", command=self._sync_invoice_date_display)
         rb_abs = ctk.CTkRadioButton(mode_frame, text="Absolute", variable=self.invoice_date_mode_var, value="absolute", command=self._sync_invoice_date_display)
         rb_rel.pack(side=tk.LEFT, padx=(0, 10))
         rb_abs.pack(side=tk.LEFT, padx=(0, 10))
-        rel_combo = ttk.Combobox(mode_frame, textvariable=self.invoice_date_relative_var, state="readonly", values=["today", "yesterday", "tomorrow"], width=12)
-        rel_combo.pack(side=tk.LEFT)
-        rel_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_invoice_date_display())
-        self._attach_tooltip(rb_rel, "Relative uses today/yesterday/tomorrow at generation time.")
+        self._attach_tooltip(rb_rel, "Relative uses today plus a saved offset from -7 to +7.")
         self._attach_tooltip(rb_abs, "Absolute uses the exact date selected in the date picker.")
-        self._attach_tooltip(rel_combo, "Relative date anchor.")
         self._style_button(left, "Set default", kind="muted", width=90, command=self._set_invoice_date_defaults).grid(row=row, column=2, padx=10, pady=8)
         row += 1
 
@@ -422,7 +418,17 @@ class InvoiceApp(ctk.CTk):
         self._attach_tooltip(del_btn, f"Delete selected {profile_type.replace('_', ' ')} profile.")
         self._attach_tooltip(def_btn, f"Use selected {profile_type.replace('_', ' ')} as default.")
 
-    def _field_row(self, parent, row: int, label: str, var: tk.StringVar, key: str, values: list[str] | None = None, date_mode: str | None = None) -> int:
+    def _field_row(
+        self,
+        parent,
+        row: int,
+        label: str,
+        var: tk.StringVar,
+        key: str,
+        values: list[str] | None = None,
+        date_mode: str | None = None,
+        readonly: bool = False,
+    ) -> int:
         lbl = ctk.CTkLabel(parent, text=label)
         lbl.grid(row=row, column=0, sticky="w", padx=10, pady=8)
         self._attach_tooltip(lbl, TOOLTIPS[label])
@@ -432,6 +438,8 @@ class InvoiceApp(ctk.CTk):
             widget.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
         else:
             widget = ctk.CTkEntry(parent, textvariable=var, height=34, fg_color="#000000", text_color="#f0f2f4", border_color="#323232", border_width=1)
+            if readonly:
+                widget.configure(state="readonly")
             widget.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
         self._attach_tooltip(widget, TOOLTIPS[label])
 
@@ -439,7 +447,10 @@ class InvoiceApp(ctk.CTk):
             btn_frame = ctk.CTkFrame(parent, fg_color="transparent")
             btn_frame.grid(row=row, column=2, padx=10, pady=8, sticky="e")
             self._style_button(btn_frame, "Pick", kind="primary", width=58, command=lambda m=date_mode: self._open_date_picker(m)).pack(side=tk.LEFT, padx=(0, 6))
-            self._style_button(btn_frame, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).pack(side=tk.LEFT)
+            if date_mode == "invoice_date":
+                self._style_button(btn_frame, "Set default", kind="muted", width=90, command=self._set_invoice_date_defaults).pack(side=tk.LEFT)
+            else:
+                self._style_button(btn_frame, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).pack(side=tk.LEFT)
         else:
             self._style_button(parent, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).grid(row=row, column=2, padx=10, pady=8)
         return row + 1
@@ -526,6 +537,33 @@ class InvoiceApp(ctk.CTk):
             self.prep_text.delete("1.0", "end")
             self.prep_text.insert("1.0", prep[:400])
 
+    def _coerce_invoice_offset(self, defaults: dict) -> int:
+        raw = defaults.get("invoice_date_relative_offset")
+        if raw is None:
+            legacy = (defaults.get("invoice_date_relative") or "today").strip().lower()
+            if legacy == "yesterday":
+                raw = -1
+            elif legacy == "tomorrow":
+                raw = 1
+            else:
+                raw = 0
+        try:
+            offset = int(raw)
+        except Exception:
+            offset = 0
+        return max(-7, min(7, offset))
+
+    def _relative_invoice_label(self, offset: int) -> str:
+        if offset == 0:
+            return "today"
+        if offset == -1:
+            return "yesterday"
+        if offset == 1:
+            return "tomorrow"
+        if offset < 0:
+            return f"today - {abs(offset)}"
+        return f"today + {offset}"
+
     def _open_date_picker(self, mode: str) -> None:
         dialog = ctk.CTkToplevel(self)
         dialog.title("Pick date")
@@ -533,11 +571,12 @@ class InvoiceApp(ctk.CTk):
         dialog.attributes("-topmost", True)
 
         if mode == "invoice_date":
-            current = self.invoice_date_var.get().strip()
-            fmt = "%Y-%m-%d"
+            if self.invoice_date_mode_var.get() == "absolute":
+                current = self.invoice_date_absolute_var.get().strip()
+            else:
+                current = self._effective_invoice_date().strftime("%Y-%m-%d")
         else:
             current = self.session_start_var.get().strip()
-            fmt = "%Y-%m-%d %H:%M"
 
         try:
             if mode == "invoice_date":
@@ -561,9 +600,15 @@ class InvoiceApp(ctk.CTk):
             tk.Spinbox(time_row, from_=0, to=59, textvariable=min_var, width=4, format="%02.0f").pack(side=tk.LEFT)
             self._style_button(time_row, "Now", kind="muted", width=72, command=lambda: (hour_var.set(dt.datetime.now().strftime("%H")), min_var.set(dt.datetime.now().strftime("%M")))).pack(side=tk.LEFT, padx=(8, 0))
 
-        def apply_date(target_date: dt.date) -> None:
+        def apply_date(target_date: dt.date, *, relative_offset: int | None = None) -> None:
             if mode == "invoice_date":
-                self.invoice_date_var.set(target_date.strftime("%Y-%m-%d"))
+                if relative_offset is None:
+                    self.invoice_date_mode_var.set("absolute")
+                    self.invoice_date_absolute_var.set(target_date.strftime("%Y-%m-%d"))
+                else:
+                    self.invoice_date_mode_var.set("relative")
+                    self.invoice_date_relative_offset_var.set(max(-7, min(7, relative_offset)))
+                self._sync_invoice_date_display()
             else:
                 try:
                     h = int(hour_var.get())
@@ -581,32 +626,54 @@ class InvoiceApp(ctk.CTk):
 
         today = dt.date.today()
         action_row = 2 if mode == "session_start" else 1
-        self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=action_row, column=0, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=action_row, column=1, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=action_row, column=2, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=action_row, column=3, padx=6, pady=(0, 8))
+        if mode == "invoice_date":
+            offsets = list(range(-7, 8))
+            for idx, offset in enumerate(offsets):
+                r = action_row + (idx // 5)
+                c = idx % 5
+                label = f"{offset:+d}" if offset != 0 else "Today"
+                kind = "primary" if offset == 0 else "muted"
+                self._style_button(
+                    dialog,
+                    label,
+                    kind=kind,
+                    width=76,
+                    command=lambda off=offset: apply_date(today + timedelta(days=off), relative_offset=off),
+                ).grid(row=r, column=c, padx=4, pady=(0, 6))
+            self._style_button(dialog, "Use selected date", kind="primary", width=140, command=apply_selected).grid(
+                row=action_row + 3, column=0, columnspan=5, padx=6, pady=(4, 8)
+            )
+        else:
+            self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=action_row, column=0, padx=6, pady=(0, 8))
+            self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=action_row, column=1, padx=6, pady=(0, 8))
+            self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=action_row, column=2, padx=6, pady=(0, 8))
+            self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=action_row, column=3, padx=6, pady=(0, 8))
 
     def _set_invoice_date_defaults(self) -> None:
-        self.settings.setdefault("field_defaults", {})["invoice_date_mode"] = self.invoice_date_mode_var.get()
-        self.settings.setdefault("field_defaults", {})["invoice_date_relative"] = self.invoice_date_relative_var.get()
-        self.settings.setdefault("field_defaults", {})["invoice_date"] = self.invoice_date_var.get()
+        defaults = self.settings.setdefault("field_defaults", {})
+        defaults["invoice_date_mode"] = self.invoice_date_mode_var.get()
+        defaults["invoice_date_relative_offset"] = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+        defaults["invoice_date"] = self.invoice_date_absolute_var.get().strip()
         save_settings(self.settings)
-        messagebox.showinfo("Saved", "Default set for invoice date mode")
+        messagebox.showinfo("Saved", "Default set for invoice date")
 
     def _effective_invoice_date(self) -> dt.date:
         if self.invoice_date_mode_var.get() == "relative":
-            anchor = self.invoice_date_relative_var.get()
-            base = dt.date.today()
-            if anchor == "yesterday":
-                return base - timedelta(days=1)
-            if anchor == "tomorrow":
-                return base + timedelta(days=1)
-            return base
-        return dt.datetime.strptime(self.invoice_date_var.get().strip(), "%Y-%m-%d").date()
+            offset = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+            return dt.date.today() + timedelta(days=offset)
+        return dt.datetime.strptime(self.invoice_date_absolute_var.get().strip(), "%Y-%m-%d").date()
 
     def _sync_invoice_date_display(self) -> None:
         if self.invoice_date_mode_var.get() == "relative":
-            self.invoice_date_var.set(self._effective_invoice_date().strftime("%Y-%m-%d"))
+            offset = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+            effective = dt.date.today() + timedelta(days=offset)
+            self.invoice_date_var.set(f"{self._relative_invoice_label(offset)} ({effective.strftime('%Y-%m-%d')})")
+        else:
+            date_text = self.invoice_date_absolute_var.get().strip()
+            if not date_text:
+                date_text = dt.date.today().strftime("%Y-%m-%d")
+                self.invoice_date_absolute_var.set(date_text)
+            self.invoice_date_var.set(date_text)
 
     def _set_default(self, field_key: str, value: object) -> None:
         model_key = FIELD_DEFAULT_KEYS[field_key]
