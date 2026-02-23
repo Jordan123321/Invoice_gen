@@ -760,7 +760,22 @@ class InvoiceApp(ctk.CTk):
         self.history_cards.clear()
 
         prune_missing_history_files()
-        entries = [e for e in load_history(limit=50) if e.get("output_path") and Path(e.get("output_path", "")).exists()]
+        cutoff = dt.datetime.now() - timedelta(days=14)
+        entries: list[dict] = []
+        for entry in load_history(limit=200):
+            output_path = entry.get("output_path", "")
+            if not output_path or not Path(output_path).exists():
+                continue
+            created_at_raw = (entry.get("created_at") or "").strip()
+            try:
+                created_at = dt.datetime.fromisoformat(created_at_raw)
+            except Exception:
+                continue
+            if created_at < cutoff:
+                continue
+            entries.append(entry)
+            if len(entries) >= 15:
+                break
 
         for idx, entry in enumerate(entries, start=1):
             bubble = ctk.CTkFrame(self.history_frame, corner_radius=14)

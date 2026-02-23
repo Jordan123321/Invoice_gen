@@ -18,7 +18,7 @@ Simple modern desktop invoice generator for non-technical users.
 - Invoice date supports relative/absolute mode with a -7..+7 day relative picker; relative values display as labels like "yesterday (YYYY-MM-DD)" while absolute values display as fixed dates.
 - Session start also supports calendar-based date selection plus explicit clock time (HH:MM).
 - Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
-- Recent invoices include in-app actions: Open, Delete file, Remove from list, plus a Refresh button to resync if files are removed manually during a session.
+- Recent invoices include in-app actions: Open, Delete file, Remove from list, plus a Refresh button to resync if files are removed manually during a session (showing only the last 14 days, capped at 15 items).
 - Rate/hour fields support both: typing custom values and choosing useful dropdown values.
   - Rate per hour suggestions: every £5 from 20 to 150.
   - Hours suggestions: every 0.25 increment.

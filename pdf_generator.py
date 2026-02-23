@@ -162,8 +162,11 @@ def build_invoice_pdf(invoice: dict, output_path: Path) -> Path:
     items = [
         [safe_para("<b>Description</b>", wrap), safe_para("<b>Hours</b>", right), safe_para(f"<b>Rate ({currency})</b>", right), safe_para(f"<b>Amount ({currency})</b>", right)],
         [safe_para(f"{service_title}\nSession date/time: {session_label}", wrap), safe_para(f"{session_duration_hours:.2f}", right), safe_para(money(rate), right), safe_para(money(billed), right)],
-        [safe_para(f"Preparation (not billed): {prep_hours:.2f} hours\n{prep_description}", wrap_small), safe_para(f"{prep_hours:.2f}", right), safe_para(money(prep_rate), right), safe_para(money(0.00), right)],
     ]
+    if abs(prep_hours) > 1e-9:
+        items.append(
+            [safe_para(f"Preparation (not billed): {prep_hours:.2f} hours\n{prep_description}", wrap_small), safe_para(f"{prep_hours:.2f}", right), safe_para(money(prep_rate), right), safe_para(money(0.00), right)]
+        )
     li = Table(items, colWidths=[col_desc, col_qty, col_rate, col_amt], repeatRows=1)
     li.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey), ("BOX", (0, 0), (-1, -1), 0.5, colors.grey), ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey)]))
     story += [li, Spacer(1, 10)]
