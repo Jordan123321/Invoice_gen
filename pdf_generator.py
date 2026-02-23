@@ -55,13 +55,31 @@ def safe_para(text: str, style: ParagraphStyle) -> Paragraph:
 
 
 def payment_rows(payment_method: dict, reference: str, currency: str) -> list[list[str]]:
-    method_type = payment_method.get("method_type", "bank_transfer")
+    method_type = payment_method.get("method_type", "bank_domestic")
     details = payment_method.get("details", {})
-    rows = [["Payment method", payment_method.get("label", method_type.title())], ["Payment currency", details.get("currency", currency)]]
+
+    if method_type == "bank_transfer":
+        method_type = "bank_international" if details.get("iban") else "bank_domestic"
+
+    label_map = {
+        "bank_domestic": "Domestic bank transfer",
+        "bank_international": "International bank transfer",
+        "paypal": "PayPal",
+    }
+    rows = [["Payment method", payment_method.get("label", label_map.get(method_type, method_type.title()))], ["Payment currency", details.get("currency", currency)]]
+
     if method_type == "paypal":
         rows += [
             ["PayPal email", details.get("paypal_email", "")],
             ["PayPal link", details.get("paypal_link", "")],
+            ["Reference", reference],
+        ]
+    elif method_type == "bank_international":
+        rows += [
+            ["Account holder", details.get("account_holder", "")],
+            ["Bank", details.get("bank_name", "")],
+            ["IBAN", details.get("iban", "")],
+            ["BIC/SWIFT", details.get("bic", "")],
             ["Reference", reference],
         ]
     else:
@@ -70,8 +88,6 @@ def payment_rows(payment_method: dict, reference: str, currency: str) -> list[li
             ["Bank", details.get("bank_name", "")],
             ["Sort code", details.get("sort_code", "")],
             ["Account number", details.get("account_number", "")],
-            ["IBAN", details.get("iban", "")],
-            ["BIC/SWIFT", details.get("bic", "")],
             ["Reference", reference],
         ]
     return rows

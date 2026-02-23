@@ -6,8 +6,11 @@ Simple modern desktop invoice generator for non-technical users.
 
 - Loads saved profiles from JSONL files.
 - Uses dropdowns for provider and recipient.
-- Lets you switch payment method with radio buttons (Bank transfer / PayPal).
-- Supports IBAN and BIC/SWIFT fields for international bank payments.
+- Uses 3 payment radio options:
+  - Domestic bank transfer
+  - International bank transfer
+  - PayPal
+- International payments support IBAN and BIC/SWIFT; domestic bank profiles are intentionally simpler (no IBAN required).
 - Uses generalized service fields (service category + service title), not tutoring-only wording.
 - Add, edit, delete, and set default provider/recipient/payment profiles.
 - "Set default" buttons for invoice form fields (for example rate per hour).
@@ -16,7 +19,9 @@ Simple modern desktop invoice generator for non-technical users.
 - Rate/hour fields support both: typing custom values and choosing useful dropdown values.
   - Rate per hour suggestions: every £5 from 20 to 150.
   - Hours suggestions: every 0.25 increment.
-- Donation panel in the app with caption + QR support (`QR.png` in repo root).
+- Dark, unified input style (black input backgrounds for text and dropdown inputs).
+- Improved readability styling and hover tooltips on main form + profile dialogs.
+- Donation panel in the app with caption + QR support (`QR.png` in repo root) and website link.
 - Generates invoice PDFs grouped by recipient folder.
 
 ## Quick start
