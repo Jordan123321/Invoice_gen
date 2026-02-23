@@ -6,12 +6,14 @@ import subprocess
 import sys
 import tkinter as tk
 import webbrowser
+from datetime import timedelta
 from pathlib import Path
 from tkinter import font as tkfont, messagebox, ttk
 from uuid import uuid4
 
 import customtkinter as ctk
 from PIL import Image
+from tkcalendar import Calendar
 
 from pdf_generator import build_invoice_pdf
 from storage import (
@@ -46,6 +48,7 @@ FIELD_DEFAULT_KEYS = {
     "session_hours": "session_duration_hours",
     "extra_hours": "prep_hours",
     "session_start": "session_start",
+    "invoice_date": "invoice_date",
     "terms": "terms_label",
     "due_days": "due_days",
     "currency": "currency",
@@ -65,6 +68,7 @@ TOOLTIPS = {
     "Session/work hours": "Total billable hours to charge.",
     "Extra hours (not billed)": "Optional non-billed hours shown for context.",
     "Session start (YYYY-MM-DD HH:MM)": "Date and time of the service/session start.",
+    "Invoice date (YYYY-MM-DD)": "Date shown as invoice issue date.",
     "Terms label": "Payment terms label shown on invoice (e.g. Net 14).",
     "Due days": "Number of days after invoice date until payment is due.",
     "Currency": "Currency code used in amounts and payment section.",
@@ -177,6 +181,7 @@ class InvoiceApp(ctk.CTk):
         self.prep_hours_var = tk.StringVar(value=str(defaults.get("prep_hours", "0.0")))
         self.prep_description_var = tk.StringVar(value=defaults.get("prep_description", "Preparation and admin (not billed)."))
         self.session_start_var = tk.StringVar(value=defaults.get("session_start", dt.datetime.now().strftime("%Y-%m-%d %H:%M")))
+        self.invoice_date_var = tk.StringVar(value=defaults.get("invoice_date", dt.date.today().strftime("%Y-%m-%d")))
         self.terms_var = tk.StringVar(value=defaults.get("terms_label", "Net 7"))
         self.due_days_var = tk.StringVar(value=str(defaults.get("due_days", "7")))
         self.currency_var = tk.StringVar(value=defaults.get("currency", "GBP"))
@@ -300,7 +305,8 @@ class InvoiceApp(ctk.CTk):
         row = self._field_row(left, row, "Rate per hour", self.rate_var, "rate_per_hour", values=[str(v) for v in range(20, 151, 5)])
         row = self._field_row(left, row, "Session/work hours", self.duration_var, "session_hours", values=float_steps(0.25, 12.0, 0.25))
         row = self._field_row(left, row, "Extra hours (not billed)", self.prep_hours_var, "extra_hours", values=float_steps(0.0, 8.0, 0.25))
-        row = self._field_row(left, row, "Session start (YYYY-MM-DD HH:MM)", self.session_start_var, "session_start")
+        row = self._field_row(left, row, "Session start (YYYY-MM-DD HH:MM)", self.session_start_var, "session_start", date_mode="session_start")
+        row = self._field_row(left, row, "Invoice date (YYYY-MM-DD)", self.invoice_date_var, "invoice_date", date_mode="invoice_date")
         row = self._field_row(left, row, "Terms label", self.terms_var, "terms", values=terms_values)
         row = self._field_row(left, row, "Due days", self.due_days_var, "due_days", values=["7", "14", "30"])
         row = self._field_row(left, row, "Currency", self.currency_var, "currency", values=currency_values)
@@ -323,7 +329,12 @@ class InvoiceApp(ctk.CTk):
         row += 1
         self._style_button(left, "Generate Invoice PDF", kind="primary", width=220, command=self._generate_invoice).grid(row=row, column=0, columnspan=3, pady=20, padx=10, sticky="ew")
 
-        ctk.CTkLabel(right, text="Recent invoices", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 4))
+        header_row = ctk.CTkFrame(right, fg_color="transparent")
+        header_row.grid(row=0, column=0, sticky="ew", padx=10, pady=(12, 4))
+        header_row.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(header_row, text="Recent invoices", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, sticky="w")
+        self._style_button(header_row, "Refresh", kind="primary", width=88, command=self._refresh_history).grid(row=0, column=1, sticky="e")
+
         self.history_frame = ctk.CTkScrollableFrame(right, corner_radius=10)
         self.history_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=8)
 
@@ -386,7 +397,7 @@ class InvoiceApp(ctk.CTk):
         self._attach_tooltip(del_btn, f"Delete selected {profile_type.replace('_', ' ')} profile.")
         self._attach_tooltip(def_btn, f"Use selected {profile_type.replace('_', ' ')} as default.")
 
-    def _field_row(self, parent, row: int, label: str, var: tk.StringVar, key: str, values: list[str] | None = None) -> int:
+    def _field_row(self, parent, row: int, label: str, var: tk.StringVar, key: str, values: list[str] | None = None, date_mode: str | None = None) -> int:
         lbl = ctk.CTkLabel(parent, text=label)
         lbl.grid(row=row, column=0, sticky="w", padx=10, pady=8)
         self._attach_tooltip(lbl, TOOLTIPS[label])
@@ -399,7 +410,13 @@ class InvoiceApp(ctk.CTk):
             widget.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
         self._attach_tooltip(widget, TOOLTIPS[label])
 
-        self._style_button(parent, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).grid(row=row, column=2, padx=10, pady=8)
+        if date_mode:
+            btn_frame = ctk.CTkFrame(parent, fg_color="transparent")
+            btn_frame.grid(row=row, column=2, padx=10, pady=8, sticky="e")
+            self._style_button(btn_frame, "Pick", kind="primary", width=58, command=lambda m=date_mode: self._open_date_picker(m)).pack(side=tk.LEFT, padx=(0, 6))
+            self._style_button(btn_frame, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).pack(side=tk.LEFT)
+        else:
+            self._style_button(parent, "Set default", kind="muted", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).grid(row=row, column=2, padx=10, pady=8)
         return row + 1
 
     def _attach_tooltip(self, widget, text: str) -> None:
@@ -419,8 +436,12 @@ class InvoiceApp(ctk.CTk):
         default_payment_type = selected.get("payment_type")
         if default_payment_type in set(PAYMENT_TYPE_LABELS):
             self.payment_type_var.set(default_payment_type)
+        else:
+            self.payment_type_var.set("bank_domestic")
         self._reload_payment_combo()
         self._select_combo_by_id("payment_method", selected.get("payment_method_id"), self.payment_var)
+        if not self.payment_var.get() and self.payment_combo["values"]:
+            self.payment_var.set(self.payment_combo["values"][0])
 
     def _select_combo_by_id(self, profile_type: str, profile_id: str | None, target_var: tk.StringVar) -> None:
         items = self.profiles.get(profile_type, [])
@@ -480,6 +501,52 @@ class InvoiceApp(ctk.CTk):
             self.prep_text.delete("1.0", "end")
             self.prep_text.insert("1.0", prep[:400])
 
+    def _open_date_picker(self, mode: str) -> None:
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Pick date")
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+
+        if mode == "invoice_date":
+            current = self.invoice_date_var.get().strip()
+            fmt = "%Y-%m-%d"
+        else:
+            current = self.session_start_var.get().strip()
+            fmt = "%Y-%m-%d %H:%M"
+
+        try:
+            if mode == "invoice_date":
+                cur_dt = dt.datetime.strptime(current, "%Y-%m-%d")
+            else:
+                cur_dt = dt.datetime.strptime(current, "%Y-%m-%d %H:%M")
+        except Exception:
+            cur_dt = dt.datetime.now()
+
+        cal = Calendar(dialog, selectmode="day", year=cur_dt.year, month=cur_dt.month, day=cur_dt.day, date_pattern="yyyy-mm-dd")
+        cal.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
+
+        def apply_date(target_date: dt.date) -> None:
+            if mode == "invoice_date":
+                self.invoice_date_var.set(target_date.strftime("%Y-%m-%d"))
+            else:
+                try:
+                    cur_time = dt.datetime.strptime(self.session_start_var.get().strip(), "%Y-%m-%d %H:%M").time()
+                except Exception:
+                    cur_time = dt.datetime.now().time().replace(second=0, microsecond=0)
+                merged = dt.datetime.combine(target_date, cur_time)
+                self.session_start_var.set(merged.strftime("%Y-%m-%d %H:%M"))
+            dialog.destroy()
+
+        def apply_selected() -> None:
+            d = dt.datetime.strptime(cal.get_date(), "%Y-%m-%d").date()
+            apply_date(d)
+
+        today = dt.date.today()
+        self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=1, column=0, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=1, column=1, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=1, column=2, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=1, column=3, padx=6, pady=(0, 8))
+
     def _set_default(self, field_key: str, value: object) -> None:
         model_key = FIELD_DEFAULT_KEYS[field_key]
         self.settings.setdefault("field_defaults", {})[model_key] = value
@@ -494,7 +561,7 @@ class InvoiceApp(ctk.CTk):
             payment = self._find_profile("payment_method", self.payment_var.get())
 
             session_start = dt.datetime.strptime(self.session_start_var.get().strip(), "%Y-%m-%d %H:%M")
-            invoice_date = dt.date.today()
+            invoice_date = dt.datetime.strptime(self.invoice_date_var.get().strip(), "%Y-%m-%d").date()
             due_days = int(self.due_days_var.get().strip())
 
             recipient_slug = slugify(recipient["display_name"])
@@ -610,9 +677,6 @@ class InvoiceApp(ctk.CTk):
             lbl = ctk.CTkLabel(dialog, text=label)
             lbl.grid(row=i, column=0, sticky="w", padx=8, pady=6)
             self._attach_tooltip(lbl, helper_text)
-            tip_badge = ctk.CTkLabel(dialog, text="(?)", text_color=("#8db9ff", "#8db9ff"))
-            tip_badge.grid(row=i, column=0, sticky="e", padx=(0, 6), pady=6)
-            self._attach_tooltip(tip_badge, helper_text)
             var = tk.StringVar(value=(initial or {}).get(key, ""))
             vars_map[key] = var
             ent = ctk.CTkEntry(dialog, textvariable=var, width=360, fg_color="#000000", text_color="#f0f2f4", border_color="#323232", border_width=1)

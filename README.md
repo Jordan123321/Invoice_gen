@@ -15,8 +15,10 @@ Simple modern desktop invoice generator for non-technical users.
 - Add, edit, delete, and set default provider/recipient/payment profiles.
 - "Set default" buttons for invoice form fields (for example rate per hour).
 - Tickbox to optionally open the generated PDF immediately (default off).
+- Invoice date field defaults to today and supports calendar/date picker shortcuts (Today, Yesterday, Tomorrow, absolute date).
+- Session start also supports calendar-based date selection while preserving time.
 - Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
-- Recent invoices include in-app actions: Open, Delete file, and Remove from list.
+- Recent invoices include in-app actions: Open, Delete file, Remove from list, plus a Refresh button to resync if files are removed manually during a session.
 - Rate/hour fields support both: typing custom values and choosing useful dropdown values.
   - Rate per hour suggestions: every £5 from 20 to 150.
   - Hours suggestions: every 0.25 increment.
@@ -33,6 +35,8 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
+
+The app uses `tkcalendar` for date-picking widgets.
 
 ## Data files
 
