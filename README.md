@@ -6,13 +6,13 @@ A desktop invoice generator focused on speed, repeatability, and clean PDF outpu
 
 ## Download
 
-- **Latest release (recommended):**
-  - Windows `.exe`, macOS package, Linux build artifacts:  
-    `https://github.com/jordan123321/Invoice_gen/releases/latest`
-- **Build pipeline page (if you want CI artifacts from a run):**  
-  `https://github.com/jordan123321/Invoice_gen/actions`
+- **Windows (latest):** [Download Windows build](https://github.com/Jordan123321/Invoice_gen/releases/latest/download/InvoiceApp-Windows.zip)
+- **macOS (latest):** [Download macOS build](https://github.com/Jordan123321/Invoice_gen/releases/latest/download/InvoiceApp-macOS.zip)
+- **Linux (latest):** [Download Linux build](https://github.com/Jordan123321/Invoice_gen/releases/latest/download/InvoiceApp-Linux.zip)
+- **All release assets:** [Latest release page](https://github.com/Jordan123321/Invoice_gen/releases/latest)
+- **CI runs/artifacts:** [GitHub Actions](https://github.com/Jordan123321/Invoice_gen/actions)
 
-> Tip: Use **Releases** for stable downloads. Use **Actions artifacts** for testing/preview builds.
+> Tip: Use **Latest release** links for stable downloads. Use **Actions artifacts** for testing/preview builds.
 
 ---
 
