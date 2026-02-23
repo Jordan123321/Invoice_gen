@@ -125,10 +125,11 @@ For exact terms, read the full license text.
 
 ## Packaging notes
 
-### Windows EXE (onefile, with bundled seed data + QR)
+### Windows EXE (onefile, with bundled seed data + QR + startup splash)
 ```bash
 pip install pyinstaller
 pyinstaller --name InvoiceApp --onefile --windowed \
+  --splash "Loading.png" \
   --add-data "data/seed_profiles.jsonl;data" \
   --add-data "QR.png;." \
   app.py
@@ -142,5 +143,7 @@ pyinstaller --name InvoiceApp --windowed \
   --add-data "QR.png:." \
   app.py
 ```
+
+> Note: PyInstaller splash support is primarily used for onefile startup UX on Windows.
 
 Outputs appear under `dist/`. For reproducible builds, use `InvoiceApp.spec`.
