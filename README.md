@@ -1,12 +1,14 @@
 # Invoice_gen Desktop App
 
-Simple desktop invoice generator for non-technical users.
+Simple modern desktop invoice generator for non-technical users.
 
 ## What it does
 
 - Loads saved profiles from JSONL files.
 - Uses dropdowns for provider and recipient.
 - Lets you switch payment method with radio buttons (Bank transfer / PayPal).
+- Supports IBAN and BIC/SWIFT fields for international bank payments.
+- Uses generalized service fields (service category + service title), not tutoring-only wording.
 - Generates invoice PDFs grouped by recipient folder.
 - Shows recent invoices grouped by recipient.
 
@@ -45,6 +47,6 @@ The executable will be available in `dist/InvoiceApp.exe`.
 
 ## Notes
 
-- The app reuses ReportLab for PDF generation.
+- The app uses `customtkinter` to provide a modern UI look and feel.
 - Fake test profiles include a Joe Bloggs style setup.
 - Real PII stays in local ignored files.

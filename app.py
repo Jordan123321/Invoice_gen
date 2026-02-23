@@ -7,6 +7,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 from uuid import uuid4
 
+import customtkinter as ctk
+
 from pdf_generator import build_invoice_pdf
 from storage import load_history, load_profiles, record_invoice_history, save_profile
 
@@ -18,11 +20,14 @@ def slugify(value: str) -> str:
     return "".join(c.lower() if c.isalnum() else "-" for c in value).strip("-") or "recipient"
 
 
-class InvoiceApp(tk.Tk):
+class InvoiceApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
+        ctk.set_appearance_mode("System")
+        ctk.set_default_color_theme("blue")
+
         self.title("Invoice Generator")
-        self.geometry("980x680")
+        self.geometry("1100x760")
 
         self.profiles = load_profiles()
         self.provider_var = tk.StringVar()
@@ -30,12 +35,13 @@ class InvoiceApp(tk.Tk):
         self.payment_type_var = tk.StringVar(value="bank_transfer")
         self.payment_var = tk.StringVar()
 
-        self.service_title_var = tk.StringVar(value="Tutoring session")
+        self.service_category_var = tk.StringVar(value="Consulting")
+        self.service_title_var = tk.StringVar(value="Professional service")
         self.student_name_var = tk.StringVar(value="")
         self.rate_var = tk.StringVar(value="75")
         self.duration_var = tk.StringVar(value="1.0")
-        self.prep_hours_var = tk.StringVar(value="1.0")
-        self.prep_description_var = tk.StringVar(value="Preparation (not billed): reviewing notes.")
+        self.prep_hours_var = tk.StringVar(value="0.0")
+        self.prep_description_var = tk.StringVar(value="Preparation and admin (not billed).")
         self.session_start_var = tk.StringVar(value=dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.terms_var = tk.StringVar(value="Net 7")
         self.due_days_var = tk.StringVar(value="7")
@@ -46,46 +52,48 @@ class InvoiceApp(tk.Tk):
         self._refresh_history()
 
     def _build_ui(self) -> None:
-        self.columnconfigure(0, weight=3)
-        self.columnconfigure(1, weight=2)
+        self.grid_columnconfigure(0, weight=3)
+        self.grid_columnconfigure(1, weight=2)
+        self.grid_rowconfigure(0, weight=1)
 
-        left = ttk.Frame(self, padding=12)
-        right = ttk.Frame(self, padding=12)
-        left.grid(row=0, column=0, sticky="nsew")
-        right.grid(row=0, column=1, sticky="nsew")
-        left.columnconfigure(1, weight=1)
+        left = ctk.CTkFrame(self, corner_radius=12)
+        right = ctk.CTkFrame(self, corner_radius=12)
+        left.grid(row=0, column=0, sticky="nsew", padx=(14, 7), pady=14)
+        right.grid(row=0, column=1, sticky="nsew", padx=(7, 14), pady=14)
+        left.grid_columnconfigure(1, weight=1)
 
         row = 0
-        ttk.Label(left, text="Provider").grid(row=row, column=0, sticky="w")
+        ctk.CTkLabel(left, text="Provider").grid(row=row, column=0, sticky="w", padx=10, pady=8)
         self.provider_combo = ttk.Combobox(left, textvariable=self.provider_var, state="readonly")
-        self.provider_combo.grid(row=row, column=1, sticky="ew")
-        ttk.Button(left, text="Add", command=self._add_provider_dialog).grid(row=row, column=2, padx=6)
+        self.provider_combo.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
+        ctk.CTkButton(left, text="Add", width=70, command=self._add_provider_dialog).grid(row=row, column=2, padx=10, pady=8)
 
         row += 1
-        ttk.Label(left, text="Recipient").grid(row=row, column=0, sticky="w")
+        ctk.CTkLabel(left, text="Recipient").grid(row=row, column=0, sticky="w", padx=10, pady=8)
         self.recipient_combo = ttk.Combobox(left, textvariable=self.recipient_var, state="readonly")
-        self.recipient_combo.grid(row=row, column=1, sticky="ew")
-        ttk.Button(left, text="Add", command=self._add_recipient_dialog).grid(row=row, column=2, padx=6)
+        self.recipient_combo.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
+        ctk.CTkButton(left, text="Add", width=70, command=self._add_recipient_dialog).grid(row=row, column=2, padx=10, pady=8)
 
         row += 1
-        ttk.Label(left, text="Payment type").grid(row=row, column=0, sticky="w")
-        payment_frame = ttk.Frame(left)
-        payment_frame.grid(row=row, column=1, sticky="w")
-        ttk.Radiobutton(payment_frame, text="Bank transfer", variable=self.payment_type_var, value="bank_transfer", command=self._on_payment_type_changed).pack(side=tk.LEFT)
-        ttk.Radiobutton(payment_frame, text="PayPal", variable=self.payment_type_var, value="paypal", command=self._on_payment_type_changed).pack(side=tk.LEFT)
+        ctk.CTkLabel(left, text="Payment type").grid(row=row, column=0, sticky="w", padx=10, pady=8)
+        payment_frame = ctk.CTkFrame(left, fg_color="transparent")
+        payment_frame.grid(row=row, column=1, sticky="w", padx=10)
+        ctk.CTkRadioButton(payment_frame, text="Bank transfer", variable=self.payment_type_var, value="bank_transfer", command=self._on_payment_type_changed).pack(side=tk.LEFT, padx=(0, 12))
+        ctk.CTkRadioButton(payment_frame, text="PayPal", variable=self.payment_type_var, value="paypal", command=self._on_payment_type_changed).pack(side=tk.LEFT)
 
         row += 1
-        ttk.Label(left, text="Payment profile").grid(row=row, column=0, sticky="w")
+        ctk.CTkLabel(left, text="Payment profile").grid(row=row, column=0, sticky="w", padx=10, pady=8)
         self.payment_combo = ttk.Combobox(left, textvariable=self.payment_var, state="readonly")
-        self.payment_combo.grid(row=row, column=1, sticky="ew")
-        ttk.Button(left, text="Add", command=self._add_payment_dialog).grid(row=row, column=2, padx=6)
+        self.payment_combo.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
+        ctk.CTkButton(left, text="Add", width=70, command=self._add_payment_dialog).grid(row=row, column=2, padx=10, pady=8)
 
         fields = [
+            ("Service category", self.service_category_var),
             ("Service title", self.service_title_var),
-            ("Student name", self.student_name_var),
+            ("Client reference (optional)", self.student_name_var),
             ("Rate per hour", self.rate_var),
-            ("Session hours", self.duration_var),
-            ("Prep hours", self.prep_hours_var),
+            ("Session/work hours", self.duration_var),
+            ("Extra hours (not billed)", self.prep_hours_var),
             ("Session start (YYYY-MM-DD HH:MM)", self.session_start_var),
             ("Terms label", self.terms_var),
             ("Due days", self.due_days_var),
@@ -93,23 +101,22 @@ class InvoiceApp(tk.Tk):
         ]
         for label, var in fields:
             row += 1
-            ttk.Label(left, text=label).grid(row=row, column=0, sticky="w")
-            ttk.Entry(left, textvariable=var).grid(row=row, column=1, columnspan=2, sticky="ew")
+            ctk.CTkLabel(left, text=label).grid(row=row, column=0, sticky="w", padx=10, pady=8)
+            ctk.CTkEntry(left, textvariable=var).grid(row=row, column=1, columnspan=2, sticky="ew", padx=10, pady=8)
 
         row += 1
-        ttk.Label(left, text="Prep description").grid(row=row, column=0, sticky="nw")
-        self.prep_text = tk.Text(left, height=4, width=40)
-        self.prep_text.grid(row=row, column=1, columnspan=2, sticky="ew")
+        ctk.CTkLabel(left, text="Extra work description").grid(row=row, column=0, sticky="nw", padx=10, pady=8)
+        self.prep_text = ctk.CTkTextbox(left, height=90)
+        self.prep_text.grid(row=row, column=1, columnspan=2, sticky="ew", padx=10, pady=8)
         self.prep_text.insert("1.0", self.prep_description_var.get())
 
         row += 1
-        ttk.Button(left, text="Generate Invoice PDF", command=self._generate_invoice).grid(row=row, column=0, columnspan=3, pady=14)
+        ctk.CTkButton(left, text="Generate Invoice PDF", height=40, command=self._generate_invoice).grid(row=row, column=0, columnspan=3, pady=16, padx=10, sticky="ew")
 
-        ttk.Label(right, text="Recent invoices", font=("Arial", 12, "bold")).pack(anchor="w")
-        self.history_list = tk.Listbox(right, height=30)
-        self.history_list.pack(fill="both", expand=True, pady=8)
-
-        ttk.Button(right, text="Open invoices folder", command=self._open_invoices_folder).pack(anchor="w")
+        ctk.CTkLabel(right, text="Recent invoices", font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w", padx=10, pady=(10, 4))
+        self.history_list = tk.Listbox(right, height=30, font=("Segoe UI", 10), borderwidth=0, highlightthickness=0)
+        self.history_list.pack(fill="both", expand=True, padx=10, pady=8)
+        ctk.CTkButton(right, text="Open invoices folder", command=self._open_invoices_folder).pack(anchor="w", padx=10, pady=(0, 10))
 
     def _load_defaults(self) -> None:
         self.provider_combo["values"] = [p["display_name"] for p in self.profiles.get("provider", [])]
@@ -127,10 +134,7 @@ class InvoiceApp(tk.Tk):
         method = self.payment_type_var.get()
         payments = [p for p in self.profiles.get("payment_method", []) if p.get("method_type") == method]
         self.payment_combo["values"] = [p.get("label", p["id"]) for p in payments]
-        if self.payment_combo["values"]:
-            self.payment_var.set(self.payment_combo["values"][0])
-        else:
-            self.payment_var.set("")
+        self.payment_var.set(self.payment_combo["values"][0] if self.payment_combo["values"] else "")
 
     def _on_payment_type_changed(self) -> None:
         self._reload_payment_combo()
@@ -158,11 +162,14 @@ class InvoiceApp(tk.Tk):
             invoice_number = f"INV-{invoice_date.strftime('%Y%m%d')}-{timestamp[-4:]}"
             out_path = INVOICES_DIR / recipient_slug / year / f"{invoice_number}.pdf"
 
+            service_category = self.service_category_var.get().strip() or "General"
+            service_title = self.service_title_var.get().strip() or "Professional service"
             invoice = {
                 "provider": provider,
                 "recipient": recipient,
                 "payment_method": payment,
-                "service_title": self.service_title_var.get().strip() or "Service",
+                "service_category": service_category,
+                "service_title": service_title,
                 "student_name": self.student_name_var.get().strip() or recipient.get("student_name", ""),
                 "rate_per_hour": float(self.rate_var.get().strip()),
                 "session_duration_hours": float(self.duration_var.get().strip()),
@@ -182,6 +189,7 @@ class InvoiceApp(tk.Tk):
                     "invoice_number": invoice_number,
                     "recipient": recipient["display_name"],
                     "recipient_id": recipient["id"],
+                    "service_category": service_category,
                     "output_path": str(out_path),
                     "created_at": dt.datetime.now().isoformat(timespec="seconds"),
                     "payment_method": payment.get("method_type", "bank_transfer"),
@@ -200,19 +208,25 @@ class InvoiceApp(tk.Tk):
         for recipient, items in grouped.items():
             self.history_list.insert(tk.END, f"[{recipient}]")
             for entry in items[:10]:
-                self.history_list.insert(tk.END, f"  {entry.get('created_at', '')} - {entry.get('invoice_number', '')}")
+                service_category = entry.get("service_category", "General")
+                self.history_list.insert(
+                    tk.END,
+                    f"  {entry.get('created_at', '')} - {entry.get('invoice_number', '')} ({service_category})",
+                )
                 self.history_list.insert(tk.END, f"    {entry.get('output_path', '')}")
 
     def _simple_record_dialog(self, title: str, fields: list[tuple[str, str]]) -> dict | None:
-        dialog = tk.Toplevel(self)
+        dialog = ctk.CTkToplevel(self)
         dialog.title(title)
         dialog.grab_set()
+        dialog.attributes("-topmost", True)
+
         vars_map: dict[str, tk.StringVar] = {}
         for i, (key, label) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=i, column=0, sticky="w", padx=8, pady=6)
+            ctk.CTkLabel(dialog, text=label).grid(row=i, column=0, sticky="w", padx=8, pady=6)
             var = tk.StringVar()
             vars_map[key] = var
-            ttk.Entry(dialog, textvariable=var, width=40).grid(row=i, column=1, padx=8, pady=6)
+            ctk.CTkEntry(dialog, textvariable=var, width=360).grid(row=i, column=1, padx=8, pady=6)
 
         result = {}
 
@@ -221,7 +235,7 @@ class InvoiceApp(tk.Tk):
                 result[key] = vars_map[key].get().strip()
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=submit).grid(row=len(fields), column=0, columnspan=2, pady=8)
+        ctk.CTkButton(dialog, text="Save", command=submit).grid(row=len(fields), column=0, columnspan=2, pady=8)
         self.wait_window(dialog)
         return result or None
 
@@ -242,7 +256,10 @@ class InvoiceApp(tk.Tk):
         self.provider_var.set(record["display_name"])
 
     def _add_recipient_dialog(self) -> None:
-        result = self._simple_record_dialog("Add recipient", [("display_name", "Name"), ("address", "Address (comma-separated)"), ("email", "Email"), ("student_name", "Student name")])
+        result = self._simple_record_dialog(
+            "Add recipient",
+            [("display_name", "Name"), ("address", "Address (comma-separated)"), ("email", "Email"), ("student_name", "Client reference")],
+        )
         if not result:
             return
         record = {
@@ -267,8 +284,10 @@ class InvoiceApp(tk.Tk):
                 ("label", "Profile label"),
                 ("account_holder", "Account holder"),
                 ("bank_name", "Bank name"),
-                ("sort_code", "Sort code"),
-                ("account_number", "Account number"),
+                ("sort_code", "Sort code (optional)"),
+                ("account_number", "Account number (optional)"),
+                ("iban", "IBAN (for international payments)"),
+                ("bic", "BIC/SWIFT (optional)"),
                 ("currency", "Currency"),
             ]
         result = self._simple_record_dialog("Add payment method", fields)

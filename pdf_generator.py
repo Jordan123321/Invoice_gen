@@ -70,6 +70,8 @@ def payment_rows(payment_method: dict, reference: str, currency: str) -> list[li
             ["Bank", details.get("bank_name", "")],
             ["Sort code", details.get("sort_code", "")],
             ["Account number", details.get("account_number", "")],
+            ["IBAN", details.get("iban", "")],
+            ["BIC/SWIFT", details.get("bic", "")],
             ["Reference", reference],
         ]
     return rows
@@ -119,7 +121,8 @@ def build_invoice_pdf(invoice: dict, output_path: Path) -> Path:
     story += [hdr, Spacer(1, 10)]
 
     currency = invoice.get("currency", "GBP")
-    service_title = invoice.get("service_title", "Service")
+    service_category = invoice.get("service_category", "General")
+    service_title = invoice.get("service_title", "Professional service")
     prep_hours = float(invoice.get("prep_hours", 0.0))
     prep_description = invoice.get("prep_description", "Preparation (not billed)")
     rate = float(invoice.get("rate_per_hour", 0.0))
@@ -128,7 +131,7 @@ def build_invoice_pdf(invoice: dict, output_path: Path) -> Path:
 
     session_label = f"{fmt_date(session_start.date())}  {fmt_time(session_start)}–{fmt_time(session_end)}"
     meta = Table(
-        [["Invoice #", invoice_number, "Invoice date", fmt_date(invoice_date)], ["Terms", invoice.get("terms_label", "Net 7"), "Due date", fmt_date(due_date)], ["Student", student_name or "-", "Session", session_label]],
+        [["Invoice #", invoice_number, "Invoice date", fmt_date(invoice_date)], ["Terms", invoice.get("terms_label", "Net 7"), "Due date", fmt_date(due_date)], ["Service type", service_category, "Session", session_label], ["Client reference", student_name or "-", "", ""]],
         colWidths=[24 * mm, 62 * mm, 24 * mm, 60 * mm],
     )
     meta.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke), ("BOX", (0, 0), (-1, -1), 0.5, colors.grey), ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey), ("FONTSIZE", (0, 0), (-1, -1), 10)]))
