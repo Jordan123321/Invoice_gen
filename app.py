@@ -537,6 +537,13 @@ class InvoiceApp(ctk.CTk):
             self.prep_text.delete("1.0", "end")
             self.prep_text.insert("1.0", prep[:400])
 
+    def _clamped_invoice_offset(self, value: object) -> int:
+        try:
+            offset = int(value)
+        except Exception:
+            offset = 0
+        return max(-7, min(7, offset))
+
     def _coerce_invoice_offset(self, defaults: dict) -> int:
         raw = defaults.get("invoice_date_relative_offset")
         if raw is None:
@@ -547,11 +554,7 @@ class InvoiceApp(ctk.CTk):
                 raw = 1
             else:
                 raw = 0
-        try:
-            offset = int(raw)
-        except Exception:
-            offset = 0
-        return max(-7, min(7, offset))
+        return self._clamped_invoice_offset(raw)
 
     def _relative_invoice_label(self, offset: int) -> str:
         if offset == 0:
@@ -608,7 +611,7 @@ class InvoiceApp(ctk.CTk):
                     self.invoice_date_absolute_var.set(target_date.strftime("%Y-%m-%d"))
                 else:
                     self.invoice_date_mode_var.set("relative")
-                    self.invoice_date_relative_offset_var.set(max(-7, min(7, relative_offset)))
+                    self.invoice_date_relative_offset_var.set(self._clamped_invoice_offset(relative_offset))
                 self._sync_invoice_date_display()
             else:
                 try:
@@ -670,20 +673,20 @@ class InvoiceApp(ctk.CTk):
     def _set_invoice_date_defaults(self) -> None:
         defaults = self.settings.setdefault("field_defaults", {})
         defaults["invoice_date_mode"] = self.invoice_date_mode_var.get()
-        defaults["invoice_date_relative_offset"] = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+        defaults["invoice_date_relative_offset"] = self._clamped_invoice_offset(self.invoice_date_relative_offset_var.get())
         defaults["invoice_date"] = self.invoice_date_absolute_var.get().strip()
         save_settings(self.settings)
         messagebox.showinfo("Saved", "Default set for invoice date")
 
     def _effective_invoice_date(self) -> dt.date:
         if self.invoice_date_mode_var.get() == "relative":
-            offset = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+            offset = self._clamped_invoice_offset(self.invoice_date_relative_offset_var.get())
             return dt.date.today() + timedelta(days=offset)
         return dt.datetime.strptime(self.invoice_date_absolute_var.get().strip(), "%Y-%m-%d").date()
 
     def _sync_invoice_date_display(self) -> None:
         if self.invoice_date_mode_var.get() == "relative":
-            offset = max(-7, min(7, int(self.invoice_date_relative_offset_var.get())))
+            offset = self._clamped_invoice_offset(self.invoice_date_relative_offset_var.get())
             effective = dt.date.today() + timedelta(days=offset)
             self.invoice_date_var.set(f"{self._relative_invoice_label(offset)} ({effective.strftime('%Y-%m-%d')})")
         else:

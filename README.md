@@ -1,31 +1,72 @@
-# Invoice_gen Desktop App
+# Invoice_gen (v1.0)
 
-Simple modern desktop invoice generator for non-technical users.
+A desktop invoice generator focused on speed, repeatability, and clean PDF output for solo professionals and small service businesses.
 
-## What it does
+> ✅ **Status:** v1.0 is now generated successfully.
 
-- Loads saved profiles from JSONL files.
-- Uses dropdowns for provider and recipient.
-- Uses 3 payment radio options:
-  - Domestic bank transfer
-  - International bank transfer
-  - PayPal
-- International payments support IBAN and BIC/SWIFT; domestic bank profiles are intentionally simpler (no IBAN required).
-- Uses generalized service fields (service category + service title), not tutoring-only wording.
-- Add, edit, delete, and set default provider/recipient/payment profiles.
-- "Set default" buttons for invoice form fields (for example rate per hour).
-- Tickbox to optionally open the generated PDF immediately (default off).
-- Invoice date supports relative/absolute mode with a -7..+7 day relative picker; relative values display as labels like "yesterday (YYYY-MM-DD)" while absolute values display as fixed dates.
-- Session start also supports calendar-based date selection plus explicit clock time (HH:MM).
-- Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
-- Recent invoices include in-app actions: Open, Delete file, Remove from list, plus a Refresh button to resync if files are removed manually during a session (showing only the last 14 days, capped at 15 items).
-- Rate/hour fields support both: typing custom values and choosing useful dropdown values.
-  - Rate per hour suggestions: every £5 from 20 to 150.
-  - Hours suggestions: every 0.25 increment.
-- Dark, unified input style (black input backgrounds for text and dropdown inputs).
-- Improved readability styling and hover tooltips on main form + profile dialogs.
-- Donation panel in the app with caption + QR support (`QR.png` in repo root) and website link.
-- Generates invoice PDFs grouped by recipient folder.
+---
+
+## Why this app exists
+
+Invoice_gen is designed for people who need to create professional invoices quickly without maintaining complicated accounting software.
+
+It emphasizes:
+- reusable profile data,
+- fast invoice form entry,
+- practical date controls,
+- and a straightforward output/history workflow.
+
+---
+
+## Key features
+
+### Profiles & defaults
+- Provider, recipient, and payment profiles stored locally.
+- Add, edit, delete, and set defaults for common selections.
+- Form-level “Set default” actions for repeat invoice fields.
+
+### Smart invoice date controls
+- Relative and absolute invoice date modes.
+- Relative picker includes quick offsets from **-7 to +7**.
+- Relative display style is semantic + explicit date (example: `yesterday (2026-02-22)`).
+- Absolute mode displays a fixed `YYYY-MM-DD` date.
+
+### Session date/time
+- Calendar picker plus explicit HH:MM selection.
+- Quick “Use selected” flow for clean date confirmation.
+
+### PDF output quality
+- Clean invoice layout with sender/recipient, metadata, line items, totals, and payment details.
+- Non-billed preparation line is automatically omitted if extra/prep hours are `0`.
+- Files are saved under recipient/year folders for organization.
+
+### History workflow
+- Recent invoices shown as actionable cards.
+- Card actions: Open, Delete file, Remove from list.
+- Refresh resyncs against filesystem changes.
+- History is constrained to:
+  - last **14 days**, and
+  - maximum **15 entries** displayed.
+
+### UI & usability
+- Dark-friendly input styling.
+- Clear tooltips throughout primary form and profile dialogs.
+- Optional auto-open PDF after generation.
+- Optional donation panel with QR and website link.
+
+---
+
+## Project structure
+
+- `app.py` — main desktop UI and workflow orchestration.
+- `pdf_generator.py` — invoice PDF layout and render logic.
+- `storage.py` — local data read/write for profiles/history/defaults.
+- `invoice_generator_template.py` — invoice templating support file.
+- `data/seed_profiles.jsonl` — versioned seed profile examples.
+- `data/*.local.*` — user-local runtime data (gitignored).
+- `invoices/` — generated PDF output tree.
+
+---
 
 ## Quick start
 
@@ -36,47 +77,60 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The app uses `tkcalendar` for date-picking widgets.
+Dependencies include `customtkinter`, `reportlab`, `Pillow`, and `tkcalendar`.
 
-## Data files
+---
 
-Committed seed data (safe fake defaults):
+## Data and persistence
 
+### Seed data (committed)
 - `data/seed_profiles.jsonl`
 
-Local private files (ignored by git):
-
+### Local data (not committed)
 - `data/profiles.local.jsonl`
 - `data/history.local.jsonl`
 - `data/defaults.local.json`
 
-Generated invoices:
-
+### Generated files
 - `invoices/<recipient>/<year>/<invoice-number>.pdf`
 
-## Donation QR
+---
 
-- Add `QR.png` at the project root.
-- The app will show it in the donation panel with a caption:
-  - **"If this app is useful, buy me a coffee (£5) ☕"**
-- Includes a **Visit my website** button linking to `https://moorearcanum.com/`.
+## Donations (optional)
 
-## Packaging a Windows EXE
+This software is free to use.
 
+If it helps you, optional support is welcome:
+- add `QR.png` to project root to enable in-app donation QR,
+- use the in-app website link (`https://moorearcanum.com/`).
+
+---
+
+## Licensing summary
+
+This repository uses a **custom license** (see [`LICENSE`](./LICENSE)).
+
+In plain language:
+- You may use, copy, and modify this software for free.
+- Donations are optional.
+- If you want to sell this software, bundle it into paid software/services, or use it in a commercial paid offering, you must obtain prior written permission and agree royalty terms with the author.
+
+For exact terms, read the full license text.
+
+---
+
+## Packaging notes
+
+### Windows EXE
 ```bash
 pip install pyinstaller
 pyinstaller --name InvoiceApp --onefile --windowed app.py
 ```
 
-The executable will be available in `dist/InvoiceApp.exe`.
-
-## Packaging a macOS app
-
-Run this on macOS:
-
+### macOS app bundle
 ```bash
 pip install pyinstaller
 pyinstaller --name InvoiceApp --windowed app.py
 ```
 
-The app bundle will be available at `dist/InvoiceApp.app`.
+Outputs appear under `dist/`.
