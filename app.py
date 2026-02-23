@@ -49,6 +49,8 @@ FIELD_DEFAULT_KEYS = {
     "extra_hours": "prep_hours",
     "session_start": "session_start",
     "invoice_date": "invoice_date",
+    "invoice_date_mode": "invoice_date_mode",
+    "invoice_date_relative": "invoice_date_relative",
     "terms": "terms_label",
     "due_days": "due_days",
     "currency": "currency",
@@ -69,6 +71,7 @@ TOOLTIPS = {
     "Extra hours (not billed)": "Optional non-billed hours shown for context.",
     "Session start (YYYY-MM-DD HH:MM)": "Date and time of the service/session start.",
     "Invoice date (YYYY-MM-DD)": "Date shown as invoice issue date.",
+    "Invoice date mode": "Choose relative date (today/yesterday/tomorrow) or absolute calendar date.",
     "Terms label": "Payment terms label shown on invoice (e.g. Net 14).",
     "Due days": "Number of days after invoice date until payment is due.",
     "Currency": "Currency code used in amounts and payment section.",
@@ -181,6 +184,8 @@ class InvoiceApp(ctk.CTk):
         self.prep_hours_var = tk.StringVar(value=str(defaults.get("prep_hours", "0.0")))
         self.prep_description_var = tk.StringVar(value=defaults.get("prep_description", "Preparation and admin (not billed)."))
         self.session_start_var = tk.StringVar(value=defaults.get("session_start", dt.datetime.now().strftime("%Y-%m-%d %H:%M")))
+        self.invoice_date_mode_var = tk.StringVar(value=defaults.get("invoice_date_mode", "relative"))
+        self.invoice_date_relative_var = tk.StringVar(value=defaults.get("invoice_date_relative", "today"))
         self.invoice_date_var = tk.StringVar(value=defaults.get("invoice_date", dt.date.today().strftime("%Y-%m-%d")))
         self.terms_var = tk.StringVar(value=defaults.get("terms_label", "Net 7"))
         self.due_days_var = tk.StringVar(value=str(defaults.get("due_days", "7")))
@@ -195,6 +200,7 @@ class InvoiceApp(ctk.CTk):
 
         self._build_ui()
         self._load_defaults()
+        self._sync_invoice_date_display()
         prune_missing_history_files()
         self._refresh_history()
         self.after(120, self._maximize_window)
@@ -307,6 +313,25 @@ class InvoiceApp(ctk.CTk):
         row = self._field_row(left, row, "Extra hours (not billed)", self.prep_hours_var, "extra_hours", values=float_steps(0.0, 8.0, 0.25))
         row = self._field_row(left, row, "Session start (YYYY-MM-DD HH:MM)", self.session_start_var, "session_start", date_mode="session_start")
         row = self._field_row(left, row, "Invoice date (YYYY-MM-DD)", self.invoice_date_var, "invoice_date", date_mode="invoice_date")
+
+        lbl_mode = ctk.CTkLabel(left, text="Invoice date mode")
+        lbl_mode.grid(row=row, column=0, sticky="w", padx=10, pady=8)
+        self._attach_tooltip(lbl_mode, TOOLTIPS["Invoice date mode"])
+        mode_frame = ctk.CTkFrame(left, fg_color="transparent")
+        mode_frame.grid(row=row, column=1, sticky="w", padx=10, pady=6)
+        rb_rel = ctk.CTkRadioButton(mode_frame, text="Relative", variable=self.invoice_date_mode_var, value="relative", command=self._sync_invoice_date_display)
+        rb_abs = ctk.CTkRadioButton(mode_frame, text="Absolute", variable=self.invoice_date_mode_var, value="absolute", command=self._sync_invoice_date_display)
+        rb_rel.pack(side=tk.LEFT, padx=(0, 10))
+        rb_abs.pack(side=tk.LEFT, padx=(0, 10))
+        rel_combo = ttk.Combobox(mode_frame, textvariable=self.invoice_date_relative_var, state="readonly", values=["today", "yesterday", "tomorrow"], width=12)
+        rel_combo.pack(side=tk.LEFT)
+        rel_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_invoice_date_display())
+        self._attach_tooltip(rb_rel, "Relative uses today/yesterday/tomorrow at generation time.")
+        self._attach_tooltip(rb_abs, "Absolute uses the exact date selected in the date picker.")
+        self._attach_tooltip(rel_combo, "Relative date anchor.")
+        self._style_button(left, "Set default", kind="muted", width=90, command=self._set_invoice_date_defaults).grid(row=row, column=2, padx=10, pady=8)
+        row += 1
+
         row = self._field_row(left, row, "Terms label", self.terms_var, "terms", values=terms_values)
         row = self._field_row(left, row, "Due days", self.due_days_var, "due_days", values=["7", "14", "30"])
         row = self._field_row(left, row, "Currency", self.currency_var, "currency", values=currency_values)
@@ -525,15 +550,28 @@ class InvoiceApp(ctk.CTk):
         cal = Calendar(dialog, selectmode="day", year=cur_dt.year, month=cur_dt.month, day=cur_dt.day, date_pattern="yyyy-mm-dd")
         cal.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
 
+        hour_var = tk.StringVar(value=f"{cur_dt.hour:02d}")
+        min_var = tk.StringVar(value=f"{cur_dt.minute:02d}")
+        if mode == "session_start":
+            time_row = ctk.CTkFrame(dialog, fg_color="transparent")
+            time_row.grid(row=1, column=0, columnspan=4, padx=10, pady=(0, 8), sticky="w")
+            ctk.CTkLabel(time_row, text="Time").pack(side=tk.LEFT, padx=(0, 6))
+            tk.Spinbox(time_row, from_=0, to=23, textvariable=hour_var, width=4, format="%02.0f").pack(side=tk.LEFT)
+            ctk.CTkLabel(time_row, text=":").pack(side=tk.LEFT, padx=4)
+            tk.Spinbox(time_row, from_=0, to=59, textvariable=min_var, width=4, format="%02.0f").pack(side=tk.LEFT)
+            self._style_button(time_row, "Now", kind="muted", width=72, command=lambda: (hour_var.set(dt.datetime.now().strftime("%H")), min_var.set(dt.datetime.now().strftime("%M")))).pack(side=tk.LEFT, padx=(8, 0))
+
         def apply_date(target_date: dt.date) -> None:
             if mode == "invoice_date":
                 self.invoice_date_var.set(target_date.strftime("%Y-%m-%d"))
             else:
                 try:
-                    cur_time = dt.datetime.strptime(self.session_start_var.get().strip(), "%Y-%m-%d %H:%M").time()
+                    h = int(hour_var.get())
+                    m = int(min_var.get())
                 except Exception:
-                    cur_time = dt.datetime.now().time().replace(second=0, microsecond=0)
-                merged = dt.datetime.combine(target_date, cur_time)
+                    now = dt.datetime.now()
+                    h, m = now.hour, now.minute
+                merged = dt.datetime.combine(target_date, dt.time(h, m))
                 self.session_start_var.set(merged.strftime("%Y-%m-%d %H:%M"))
             dialog.destroy()
 
@@ -542,10 +580,33 @@ class InvoiceApp(ctk.CTk):
             apply_date(d)
 
         today = dt.date.today()
-        self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=1, column=0, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=1, column=1, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=1, column=2, padx=6, pady=(0, 8))
-        self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=1, column=3, padx=6, pady=(0, 8))
+        action_row = 2 if mode == "session_start" else 1
+        self._style_button(dialog, "Today", kind="primary", width=80, command=lambda: apply_date(today)).grid(row=action_row, column=0, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Yesterday", kind="muted", width=90, command=lambda: apply_date(today - timedelta(days=1))).grid(row=action_row, column=1, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Tomorrow", kind="muted", width=90, command=lambda: apply_date(today + timedelta(days=1))).grid(row=action_row, column=2, padx=6, pady=(0, 8))
+        self._style_button(dialog, "Use selected", kind="primary", width=110, command=apply_selected).grid(row=action_row, column=3, padx=6, pady=(0, 8))
+
+    def _set_invoice_date_defaults(self) -> None:
+        self.settings.setdefault("field_defaults", {})["invoice_date_mode"] = self.invoice_date_mode_var.get()
+        self.settings.setdefault("field_defaults", {})["invoice_date_relative"] = self.invoice_date_relative_var.get()
+        self.settings.setdefault("field_defaults", {})["invoice_date"] = self.invoice_date_var.get()
+        save_settings(self.settings)
+        messagebox.showinfo("Saved", "Default set for invoice date mode")
+
+    def _effective_invoice_date(self) -> dt.date:
+        if self.invoice_date_mode_var.get() == "relative":
+            anchor = self.invoice_date_relative_var.get()
+            base = dt.date.today()
+            if anchor == "yesterday":
+                return base - timedelta(days=1)
+            if anchor == "tomorrow":
+                return base + timedelta(days=1)
+            return base
+        return dt.datetime.strptime(self.invoice_date_var.get().strip(), "%Y-%m-%d").date()
+
+    def _sync_invoice_date_display(self) -> None:
+        if self.invoice_date_mode_var.get() == "relative":
+            self.invoice_date_var.set(self._effective_invoice_date().strftime("%Y-%m-%d"))
 
     def _set_default(self, field_key: str, value: object) -> None:
         model_key = FIELD_DEFAULT_KEYS[field_key]
@@ -561,7 +622,7 @@ class InvoiceApp(ctk.CTk):
             payment = self._find_profile("payment_method", self.payment_var.get())
 
             session_start = dt.datetime.strptime(self.session_start_var.get().strip(), "%Y-%m-%d %H:%M")
-            invoice_date = dt.datetime.strptime(self.invoice_date_var.get().strip(), "%Y-%m-%d").date()
+            invoice_date = self._effective_invoice_date()
             due_days = int(self.due_days_var.get().strip())
 
             recipient_slug = slugify(recipient["display_name"])

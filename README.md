@@ -15,8 +15,8 @@ Simple modern desktop invoice generator for non-technical users.
 - Add, edit, delete, and set default provider/recipient/payment profiles.
 - "Set default" buttons for invoice form fields (for example rate per hour).
 - Tickbox to optionally open the generated PDF immediately (default off).
-- Invoice date field defaults to today and supports calendar/date picker shortcuts (Today, Yesterday, Tomorrow, absolute date).
-- Session start also supports calendar-based date selection while preserving time.
+- Invoice date supports relative/absolute mode (default: relative + today) and calendar/date picker shortcuts (Today, Yesterday, Tomorrow, absolute date).
+- Session start also supports calendar-based date selection plus explicit clock time (HH:MM).
 - Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
 - Recent invoices include in-app actions: Open, Delete file, Remove from list, plus a Refresh button to resync if files are removed manually during a session.
 - Rate/hour fields support both: typing custom values and choosing useful dropdown values.
