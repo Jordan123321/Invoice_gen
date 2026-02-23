@@ -116,6 +116,19 @@ def float_steps(start: float, end: float, step: float) -> list[str]:
         current += step
     return values
 
+def close_boot_splash() -> None:
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        import pyi_splash  # type: ignore
+
+        pyi_splash.close()
+    except Exception:
+        pass
+
+
+
+
 
 class Tooltip:
     def __init__(self, widget: tk.Widget, text: str):
@@ -1049,5 +1062,6 @@ class InvoiceApp(ctk.CTk):
 
 
 if __name__ == "__main__":
+    close_boot_splash()
     app = InvoiceApp()
     app.mainloop()
