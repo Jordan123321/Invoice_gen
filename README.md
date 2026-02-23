@@ -49,6 +49,7 @@ Generated invoices:
 - Add `QR.png` at the project root.
 - The app will show it in the donation panel with a caption:
   - **"If this app is useful, buy me a coffee (£5) ☕"**
+- Includes a **Visit my website** button linking to `https://moorearcanum.com/`.
 
 ## Packaging a Windows EXE
 

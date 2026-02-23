@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import font as tkfont, messagebox, ttk
 from uuid import uuid4
 
 import customtkinter as ctk
@@ -27,6 +27,7 @@ from storage import (
 BASE_DIR = Path(__file__).resolve().parent
 INVOICES_DIR = BASE_DIR / "invoices"
 DONATION_QR_PATH = BASE_DIR / "QR.png"
+WEBSITE_URL = "https://moorearcanum.com/"
 
 FIELD_DEFAULT_KEYS = {
     "service_category": "service_category",
@@ -101,20 +102,56 @@ class InvoiceApp(ctk.CTk):
         self.history_cards: list[ctk.CTkFrame] = []
         self.donation_qr_image: ctk.CTkImage | None = None
 
+        self._setup_accessible_fonts_and_comboboxes()
+
         self._build_ui()
         self._load_defaults()
         self._refresh_history()
+        self.after(120, self._maximize_window)
+
+
+    def _setup_accessible_fonts_and_comboboxes(self) -> None:
+        base_font = tkfont.nametofont("TkDefaultFont")
+        base_font.configure(family="Verdana", size=12)
+
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        style.configure(
+            "TCombobox",
+            fieldbackground="#d8d8d8",
+            background="#d8d8d8",
+            foreground="#101010",
+            bordercolor="#9a9a9a",
+            arrowcolor="#202020",
+            padding=4,
+        )
+
+    def _maximize_window(self) -> None:
+        try:
+            if sys.platform.startswith("win"):
+                self.state("zoomed")
+            elif sys.platform == "darwin":
+                self.geometry("1450x940")
+            else:
+                self.attributes("-zoomed", True)
+        except Exception:
+            pass
 
     def _build_ui(self) -> None:
-        self.grid_columnconfigure(0, weight=3)
-        self.grid_columnconfigure(1, weight=2)
+        self.grid_columnconfigure(0, weight=4, minsize=860)
+        self.grid_columnconfigure(1, weight=1, minsize=420)
         self.grid_rowconfigure(0, weight=1)
 
         left = ctk.CTkScrollableFrame(self, corner_radius=12)
         right = ctk.CTkFrame(self, corner_radius=12)
         left.grid(row=0, column=0, sticky="nsew", padx=(14, 7), pady=14)
         right.grid(row=0, column=1, sticky="nsew", padx=(7, 14), pady=14)
-        left.grid_columnconfigure(1, weight=1)
+        left.grid_columnconfigure(1, weight=1, minsize=460)
+        left.grid_columnconfigure(2, minsize=212)
         right.grid_rowconfigure(1, weight=1)
         right.grid_columnconfigure(0, weight=1)
 
@@ -187,27 +224,31 @@ class InvoiceApp(ctk.CTk):
             label = ctk.CTkLabel(donate_frame, text="", image=self.donation_qr_image)
             label.grid(row=0, column=0, rowspan=3, padx=10, pady=10)
             label.bind("<Button-1>", lambda _e: open_file(DONATION_QR_PATH))
-            ctk.CTkButton(donate_frame, text="Open QR image", width=120, command=lambda: open_file(DONATION_QR_PATH)).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 10))
+            ctk.CTkButton(donate_frame, text="Open QR image", width=120, command=lambda: open_file(DONATION_QR_PATH)).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
         else:
-            ctk.CTkLabel(donate_frame, text="QR.png not found in project root.", text_color=("gray45", "gray70")).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 10))
+            ctk.CTkLabel(donate_frame, text="QR.png not found in project root.", text_color=("gray45", "gray70")).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
+
+        ctk.CTkButton(donate_frame, text="Visit my website", width=140, command=self._open_website).grid(row=3, column=1, sticky="w", padx=10, pady=(0, 10))
 
         ctk.CTkButton(right, text="Open invoices folder", command=self._open_invoices_folder).grid(row=3, column=0, sticky="w", padx=10, pady=(0, 10))
 
     def _profile_actions(self, parent: ctk.CTkBaseClass, row: int, profile_type: str) -> None:
         action = ctk.CTkFrame(parent, fg_color="transparent")
         action.grid(row=row, column=2, padx=10, pady=6, sticky="e")
-        ctk.CTkButton(action, text="Add", width=52, command=lambda t=profile_type: self._add_profile_dialog(t)).pack(side=tk.LEFT, padx=2)
-        ctk.CTkButton(action, text="Edit", width=52, command=lambda t=profile_type: self._edit_profile_dialog(t)).pack(side=tk.LEFT, padx=2)
-        ctk.CTkButton(action, text="Delete", width=58, fg_color="#b33a3a", hover_color="#8f2d2d", command=lambda t=profile_type: self._delete_profile(t)).pack(side=tk.LEFT, padx=2)
-        ctk.CTkButton(action, text="Set default", width=85, command=lambda t=profile_type: self._set_default_profile(t)).pack(side=tk.LEFT, padx=2)
+        action.grid_columnconfigure((0, 1), weight=1)
+
+        ctk.CTkButton(action, text="Add", width=92, command=lambda t=profile_type: self._add_profile_dialog(t)).grid(row=0, column=0, padx=2, pady=2)
+        ctk.CTkButton(action, text="Edit", width=92, command=lambda t=profile_type: self._edit_profile_dialog(t)).grid(row=0, column=1, padx=2, pady=2)
+        ctk.CTkButton(action, text="Delete", width=92, fg_color="#b33a3a", hover_color="#8f2d2d", command=lambda t=profile_type: self._delete_profile(t)).grid(row=1, column=0, padx=2, pady=2)
+        ctk.CTkButton(action, text="Set default", width=92, command=lambda t=profile_type: self._set_default_profile(t)).grid(row=1, column=1, padx=2, pady=2)
 
     def _field_row(self, parent: ctk.CTkBaseClass, row: int, label: str, var: tk.StringVar, key: str, values: list[str] | None = None) -> int:
         ctk.CTkLabel(parent, text=label).grid(row=row, column=0, sticky="w", padx=10, pady=8)
         if values:
-            widget = ttk.Combobox(parent, textvariable=var, values=values, state="normal")
+            widget = ttk.Combobox(parent, textvariable=var, values=values, state="normal", width=48)
             widget.grid(row=row, column=1, sticky="ew", padx=10, pady=8)
         else:
-            ctk.CTkEntry(parent, textvariable=var).grid(row=row, column=1, sticky="ew", padx=10, pady=8)
+            ctk.CTkEntry(parent, textvariable=var, height=32).grid(row=row, column=1, sticky="ew", padx=10, pady=8)
         ctk.CTkButton(parent, text="Set default", width=90, command=lambda k=key, v=var: self._set_default(k, v.get())).grid(row=row, column=2, padx=10, pady=8)
         return row + 1
 
@@ -543,6 +584,10 @@ class InvoiceApp(ctk.CTk):
             self.payment_type_var.set(record.get("method_type", "bank_transfer"))
             self._reload_payment_combo()
             self.payment_var.set(key)
+
+    def _open_website(self) -> None:
+        import webbrowser
+        webbrowser.open(WEBSITE_URL)
 
     def _open_invoices_folder(self) -> None:
         INVOICES_DIR.mkdir(parents=True, exist_ok=True)
