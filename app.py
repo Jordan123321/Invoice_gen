@@ -127,6 +127,7 @@ class Tooltip:
         y = self.widget.winfo_rooty() + self.widget.winfo_height() + 8
         self.tip_window = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
+        tw.attributes("-topmost", True)
         tw.wm_geometry(f"+{x}+{y}")
         lbl = tk.Label(
             tw,
@@ -336,7 +337,7 @@ class InvoiceApp(ctk.CTk):
         if DONATION_QR_PATH.exists():
             self.donation_qr_image = ctk.CTkImage(light_image=Image.open(DONATION_QR_PATH), dark_image=Image.open(DONATION_QR_PATH), size=(192, 192))
             label = ctk.CTkLabel(donate_frame, text="", image=self.donation_qr_image)
-            label.grid(row=0, column=0, rowspan=3, padx=10, pady=10)
+            label.grid(row=0, column=0, rowspan=4, padx=10, pady=10, sticky="nsw")
             label.bind("<Button-1>", lambda _e: open_file(DONATION_QR_PATH))
             self._style_button(donate_frame, "Open QR image", kind="primary", width=120, command=lambda: open_file(DONATION_QR_PATH)).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
         else:
@@ -462,14 +463,14 @@ class InvoiceApp(ctk.CTk):
             messagebox.showerror("Error", str(exc))
 
     def _sanitize_invoice_texts(self) -> None:
-        limits = {
-            self.service_category_var: 48,
-            self.service_title_var: 120,
-            self.student_name_var: 48,
-            self.terms_var: 20,
-            self.currency_var: 8,
-        }
-        for var, limit in limits.items():
+        limits = [
+            (self.service_category_var, 48),
+            (self.service_title_var, 120),
+            (self.student_name_var, 48),
+            (self.terms_var, 20),
+            (self.currency_var, 8),
+        ]
+        for var, limit in limits:
             value = var.get().strip()
             if len(value) > limit:
                 var.set(value[:limit])
@@ -605,9 +606,13 @@ class InvoiceApp(ctk.CTk):
 
         vars_map: dict[str, tk.StringVar] = {}
         for i, (key, label) in enumerate(fields):
+            helper_text = SUBWINDOW_TOOLTIPS.get(label, f"Input for {label.lower()}.")
             lbl = ctk.CTkLabel(dialog, text=label)
             lbl.grid(row=i, column=0, sticky="w", padx=8, pady=6)
-            self._attach_tooltip(lbl, SUBWINDOW_TOOLTIPS.get(label, f"Input for {label.lower()}."))
+            self._attach_tooltip(lbl, helper_text)
+            tip_badge = ctk.CTkLabel(dialog, text="(?)", text_color=("#8db9ff", "#8db9ff"))
+            tip_badge.grid(row=i, column=0, sticky="e", padx=(0, 6), pady=6)
+            self._attach_tooltip(tip_badge, helper_text)
             var = tk.StringVar(value=(initial or {}).get(key, ""))
             vars_map[key] = var
             ent = ctk.CTkEntry(dialog, textvariable=var, width=360, fg_color="#000000", text_color="#f0f2f4", border_color="#323232", border_width=1)
