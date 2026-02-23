@@ -8,6 +8,7 @@ dist/
 # Local personal data
 /data/profiles.local.jsonl
 /data/history.local.jsonl
+/data/defaults.local.json
 
 # Generated invoices
 /invoices/

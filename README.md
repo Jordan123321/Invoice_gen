@@ -9,8 +9,15 @@ Simple modern desktop invoice generator for non-technical users.
 - Lets you switch payment method with radio buttons (Bank transfer / PayPal).
 - Supports IBAN and BIC/SWIFT fields for international bank payments.
 - Uses generalized service fields (service category + service title), not tutoring-only wording.
+- Add, edit, delete, and set default provider/recipient/payment profiles.
+- "Set default" buttons for invoice form fields (for example rate per hour).
+- Tickbox to optionally open the generated PDF immediately (default off).
+- Recent invoices shown as numbered bubble cards; double-click a card to open the PDF in the default viewer.
+- Rate/hour fields support both: typing custom values and choosing useful dropdown values.
+  - Rate per hour suggestions: every £5 from 20 to 150.
+  - Hours suggestions: every 0.25 increment.
+- Donation panel in the app with caption + QR support (`QR.png` in repo root).
 - Generates invoice PDFs grouped by recipient folder.
-- Shows recent invoices grouped by recipient.
 
 ## Quick start
 
@@ -31,10 +38,17 @@ Local private files (ignored by git):
 
 - `data/profiles.local.jsonl`
 - `data/history.local.jsonl`
+- `data/defaults.local.json`
 
 Generated invoices:
 
 - `invoices/<recipient>/<year>/<invoice-number>.pdf`
+
+## Donation QR
+
+- Add `QR.png` at the project root.
+- The app will show it in the donation panel with a caption:
+  - **"If this app is useful, buy me a coffee (£5) ☕"**
 
 ## Packaging a Windows EXE
 
@@ -44,9 +58,3 @@ pyinstaller --name InvoiceApp --onefile --windowed app.py
 ```
 
 The executable will be available in `dist/InvoiceApp.exe`.
-
-## Notes
-
-- The app uses `customtkinter` to provide a modern UI look and feel.
-- Fake test profiles include a Joe Bloggs style setup.
-- Real PII stays in local ignored files.
