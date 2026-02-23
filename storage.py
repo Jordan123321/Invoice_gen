@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-SEED_FILE = DATA_DIR / "seed_profiles.jsonl"
+from paths import bundled_seed_profiles_path, user_data_dir
+
+DATA_DIR = user_data_dir()
+SEED_FILE = bundled_seed_profiles_path()
 LOCAL_FILE = DATA_DIR / "profiles.local.jsonl"
 HISTORY_FILE = DATA_DIR / "history.local.jsonl"
 SETTINGS_FILE = DATA_DIR / "defaults.local.json"

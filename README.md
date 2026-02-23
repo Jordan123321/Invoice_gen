@@ -63,7 +63,7 @@ It emphasizes:
 - `storage.py` — local data read/write for profiles/history/defaults.
 - `invoice_generator_template.py` — invoice templating support file.
 - `data/seed_profiles.jsonl` — versioned seed profile examples.
-- `data/*.local.*` — user-local runtime data (gitignored).
+- `%APPDATA%/Invoice_gen/*` (Windows) or platform-equivalent app-data dir — user-local runtime data (profiles/history/defaults).
 - `invoices/` — generated PDF output tree.
 
 ---
@@ -87,12 +87,13 @@ Dependencies include `customtkinter`, `reportlab`, `Pillow`, and `tkcalendar`.
 - `data/seed_profiles.jsonl`
 
 ### Local data (not committed)
-- `data/profiles.local.jsonl`
-- `data/history.local.jsonl`
-- `data/defaults.local.json`
+Stored in the per-user app data folder (not the EXE temp extraction path):
+- `profiles.local.jsonl`
+- `history.local.jsonl`
+- `defaults.local.json`
 
 ### Generated files
-- `invoices/<recipient>/<year>/<invoice-number>.pdf`
+- `~/Documents/Invoice_gen/invoices/<recipient>/<year>/<invoice-number>.pdf`
 
 ---
 
@@ -101,7 +102,10 @@ Dependencies include `customtkinter`, `reportlab`, `Pillow`, and `tkcalendar`.
 This software is free to use.
 
 If it helps you, optional support is welcome:
-- add `QR.png` to project root to enable in-app donation QR,
+- place `QR.png` in one of these locations (first match wins):
+  1. user app-data folder (`.../Invoice_gen/QR.png`)
+  2. next to the executable
+  3. bundled in the EXE via PyInstaller `--add-data`
 - use the in-app website link (`https://moorearcanum.com/`).
 
 ---
@@ -121,16 +125,22 @@ For exact terms, read the full license text.
 
 ## Packaging notes
 
-### Windows EXE
+### Windows EXE (onefile, with bundled seed data + QR)
 ```bash
 pip install pyinstaller
-pyinstaller --name InvoiceApp --onefile --windowed app.py
+pyinstaller --name InvoiceApp --onefile --windowed \
+  --add-data "data/seed_profiles.jsonl;data" \
+  --add-data "QR.png;." \
+  app.py
 ```
 
 ### macOS app bundle
 ```bash
 pip install pyinstaller
-pyinstaller --name InvoiceApp --windowed app.py
+pyinstaller --name InvoiceApp --windowed \
+  --add-data "data/seed_profiles.jsonl:data" \
+  --add-data "QR.png:." \
+  app.py
 ```
 
-Outputs appear under `dist/`.
+Outputs appear under `dist/`. For reproducible builds, use `InvoiceApp.spec`.

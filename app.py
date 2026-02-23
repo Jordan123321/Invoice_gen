@@ -15,6 +15,7 @@ import customtkinter as ctk
 from PIL import Image
 from tkcalendar import Calendar
 
+from paths import invoices_dir, resolve_qr_path
 from pdf_generator import build_invoice_pdf
 from storage import (
     delete_profile,
@@ -29,9 +30,7 @@ from storage import (
     upsert_profile,
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-INVOICES_DIR = BASE_DIR / "invoices"
-DONATION_QR_PATH = BASE_DIR / "QR.png"
+INVOICES_DIR = invoices_dir()
 WEBSITE_URL = "https://moorearcanum.com/"
 
 PAYMENT_TYPE_LABELS = {
@@ -194,6 +193,7 @@ class InvoiceApp(ctk.CTk):
 
         self.history_cards: list[ctk.CTkFrame] = []
         self.donation_qr_image: ctk.CTkImage | None = None
+        self.donation_qr_path: Path | None = resolve_qr_path()
         self.tooltips: list[Tooltip] = []
 
         self._setup_accessible_fonts_and_inputs()
@@ -366,14 +366,14 @@ class InvoiceApp(ctk.CTk):
         ctk.CTkLabel(donate_frame, text="If this app is useful, buy me a coffee (£5) ☕", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=1, sticky="w", padx=10, pady=(10, 0))
         ctk.CTkLabel(donate_frame, text="Scan the QR code to support development.", text_color=("gray35", "gray70")).grid(row=1, column=1, sticky="w", padx=10, pady=(0, 8))
 
-        if DONATION_QR_PATH.exists():
-            self.donation_qr_image = ctk.CTkImage(light_image=Image.open(DONATION_QR_PATH), dark_image=Image.open(DONATION_QR_PATH), size=(192, 192))
+        if self.donation_qr_path is not None:
+            self.donation_qr_image = ctk.CTkImage(light_image=Image.open(self.donation_qr_path), dark_image=Image.open(self.donation_qr_path), size=(192, 192))
             label = ctk.CTkLabel(donate_frame, text="", image=self.donation_qr_image)
             label.grid(row=0, column=0, rowspan=4, padx=10, pady=10, sticky="nsw")
-            label.bind("<Button-1>", lambda _e: open_file(DONATION_QR_PATH))
-            self._style_button(donate_frame, "Open QR image", kind="primary", width=120, command=lambda: open_file(DONATION_QR_PATH)).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
+            label.bind("<Button-1>", lambda _e, p=self.donation_qr_path: open_file(p))
+            self._style_button(donate_frame, "Open QR image", kind="primary", width=120, command=lambda p=self.donation_qr_path: open_file(p)).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
         else:
-            ctk.CTkLabel(donate_frame, text="QR.png not found in project root.", text_color=("gray45", "gray70")).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
+            ctk.CTkLabel(donate_frame, text="QR.png not found (checked user data, exe folder, and bundled assets).", text_color=("gray45", "gray70")).grid(row=2, column=1, sticky="w", padx=10, pady=(0, 6))
 
         self._style_button(donate_frame, "Visit my website", kind="primary", width=140, command=self._open_website).grid(row=3, column=1, sticky="w", padx=10, pady=(0, 10))
 
