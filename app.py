@@ -116,15 +116,38 @@ def float_steps(start: float, end: float, step: float) -> list[str]:
         current += step
     return values
 
-def close_boot_splash() -> None:
+def _try_close_boot_splash() -> bool:
     if not getattr(sys, "frozen", False):
-        return
+        return False
+
+    modules: list[object] = []
     try:
         import pyi_splash  # type: ignore
 
-        pyi_splash.close()
+        modules.append(pyi_splash)
     except Exception:
         pass
+
+    try:
+        import _pyi_splash  # type: ignore
+
+        modules.append(_pyi_splash)
+    except Exception:
+        pass
+
+    for mod in modules:
+        close_fn = getattr(mod, "close", None)
+        if callable(close_fn):
+            try:
+                close_fn()
+                return True
+            except Exception:
+                continue
+    return False
+
+
+def close_boot_splash() -> None:
+    _try_close_boot_splash()
 
 
 
@@ -217,6 +240,13 @@ class InvoiceApp(ctk.CTk):
         prune_missing_history_files()
         self._refresh_history()
         self.after(120, self._maximize_window)
+        self.after(150, self._close_boot_splash_retries)
+
+    def _close_boot_splash_retries(self) -> None:
+        if _try_close_boot_splash():
+            return
+        self.after(350, _try_close_boot_splash)
+        self.after(800, _try_close_boot_splash)
 
     def _normalize_loaded_profiles(self, profiles: dict) -> dict:
         for p in profiles.get("payment_method", []):
