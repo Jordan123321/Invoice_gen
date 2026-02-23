@@ -1,0 +1,4 @@
+{"type":"provider","id":"provider-joe","display_name":"Joe Bloggs Tutoring","address_lines":["1 Example Street","London, AB1 2CD","United Kingdom"],"email":"joe.bloggs@example.com"}
+{"type":"recipient","id":"recipient-jane","display_name":"Jane Smith","address_lines":["22 Sample Avenue","Manchester, ZZ9 9ZZ","United Kingdom"],"email":"jane.smith@example.com","student_name":"Sam Smith"}
+{"type":"payment_method","id":"pay-bank-default","label":"Main Bank Account","method_type":"bank_transfer","details":{"currency":"GBP","account_holder":"Joe Bloggs Tutoring","bank_name":"Example Bank","sort_code":"11-22-33","account_number":"12345678","reference":""}}
+{"type":"payment_method","id":"pay-paypal-default","label":"PayPal","method_type":"paypal","details":{"currency":"GBP","paypal_email":"joe.bloggs@example.com","paypal_link":"https://paypal.me/example","reference":""}}
